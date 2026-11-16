@@ -12,6 +12,12 @@ export const COPY: Record<
     heroTitle: string;
     heroSubtitle: string;
     audioPanelTitle: string;
+    modeTopicTab: string;
+    modeAudioTab: string;
+    topicLabel: string;
+    topicPlaceholder: string;
+    generateFromTopicBtn: string;
+    generatingFromTopic: string;
     dropAudioTitle: string;
     dropAudioHint: string;
     recordMic: string;
@@ -20,7 +26,9 @@ export const COPY: Record<
     loadSampleEn: string;
     analyzeWithAi: string;
     analyzingAudio: string;
+    autoEditNote: string;
     characterPanelTitle: string;
+    styleModeLabel: string;
     outfitLabel: string;
     outfitColorLabel: string;
     accentColorLabel: string;
@@ -40,6 +48,7 @@ export const COPY: Record<
     narrationLabel: string;
     headlineLabel: string;
     highlightWordLabel: string;
+    thoughtBubbleLabel: string;
     durationLabel: string;
     poseLabel: string;
     emotionLabel: string;
@@ -65,28 +74,39 @@ export const COPY: Record<
     scenesLabel: string;
     progressLabel: string;
     noAudioWarning: string;
+    noTopicWarning: string;
   }
 > = {
   fa: {
     brand: 'UpVid Studio',
-    navSetup: '۱. صدا و کاراکتر',
-    navStoryboard: '۲. تدوین و صحنه‌ها',
-    navProduction: '۳. ساخت همزمان و خروجی',
-    primaryBuildBtn: 'ساخت ویدیو استیک‌من',
+    navSetup: '۱. موضوع / صدا و کاراکتر',
+    navStoryboard: '۲. بازبینی صحنه‌ها',
+    navProduction: '۳. تولید خودکار و خروجی',
+    primaryBuildBtn: 'ساخت خودکار ویدیو',
     primaryExportBtn: 'دانلود ویدیو نهایی',
-    heroTitle: 'تبدیل صدا به ویدیو استیک‌من یوتیوبی با تدوین و موشن‌گرافیک سریع',
+    heroTitle: 'ساخت کاملاً خودکار ویدیو استیک‌من کمیک یوتیوبی با هوش مصنوعی',
     heroSubtitle:
-      'فایل صوتی یا ویس خودت رو بفرست، لباس و ظاهر استیک‌من رو انتخاب کن، هر صحنه رو ویرایش کن و شاهد ساخت همزمان تصاویر، زوم‌ها و ترنزیشن‌های حرفه‌ای باش.',
-    audioPanelTitle: 'ورودی صدا و تحلیل هوش مصنوعی',
+      'فقط موضوع ویدیو رو بنویس یا ویس خودت رو بفرست؛ استودیو به صورت خودکار سناریو با هوک و مینی‌هوک‌های حرفه‌ای می‌نویسد، کاراکتر کمیک را می‌سازد و با موشن‌گرافیک و تدوین سریع تحویل می‌دهد.',
+    audioPanelTitle: 'تولید از موضوع یا ورودی صدا (تدوین خودکار)',
+    modeTopicTab: 'فقط موضوع بده (بدون ویس)',
+    modeAudioTab: 'ارسال یا ضبط ویس',
+    topicLabel: 'موضوع ویدیوی یوتیوب شما چیه؟',
+    topicPlaceholder:
+      'مثلاً: چرا ۹۰ درصد آدم‌ها ساعت ۳ نصف شب بدون دلیل بیدار میشن؟ (هوک مرموز + پایان‌بندی جذاب)',
+    generateFromTopicBtn: 'نگارش سناریو + ساخت صدا + تدوین خودکار ویدیو',
+    generatingFromTopic: 'در حال نگارش سناریو، ضبط نریشن و تدوین خودکار...',
     dropAudioTitle: 'فایل صوتی را بکشید یا انتخاب کنید',
     dropAudioHint: 'پشتیبانی از MP3, WAV, M4A, OGG, WEBM',
     recordMic: 'ضبط با میکروفون',
     stopMic: 'توقف ضبط',
     loadSampleFa: 'صدای نمونه فارسی',
     loadSampleEn: 'صدای نمونه انگلیسی',
-    analyzeWithAi: 'تحلیل صدا و صحنه‌بندی خودکار',
-    analyzingAudio: 'در حال پیاده‌سازی صدا و کارگردانی صحنه‌ها...',
-    characterPanelTitle: 'طراحی لباس و ظاهر استیک‌من',
+    analyzeWithAi: 'تحلیل صدا و تدوین کاملاً خودکار ویدیو',
+    analyzingAudio: 'در حال تحلیل صدا و تدوین خودکار صحنه‌ها...',
+    autoEditNote:
+      'تدوین، کات‌های سریع، زوم‌ها، ترنزیشن‌ها و دعوت به لایک و سابسکرایب کاملاً خودکار انجام می‌شوند.',
+    characterPanelTitle: 'استایل کمیک و لباس کاراکتر استیک‌من',
+    styleModeLabel: 'حالت هنری استیک‌من',
     outfitLabel: 'لباس کاراکتر',
     outfitColorLabel: 'رنگ لباس',
     accentColorLabel: 'رنگ موشن‌گرافیک',
@@ -94,19 +114,21 @@ export const COPY: Record<
     eyewearLabel: 'عینک',
     themeLabel: 'سبک پس‌زمینه ویدیو',
     customNotesLabel: 'توضیحات دلخواه ظاهر و سبک',
-    customNotesPlaceholder: 'مثلاً: هودی مشکی با کلاه، حرکات دست پرانرژی، مثل ویدیوهای تبیینی یوتیوب...',
-    lineWeightLabel: 'ضخامت خطوط',
-    goToStoryboard: 'ورود به ویرایشگر صحنه‌ها',
-    storyboardTitle: 'تدوینگر صحنه به صحنه (قابل ویرایش در هر لحظه)',
+    customNotesPlaceholder:
+      'مثلاً: هودی قرمز کمیک، چشم‌های درشت پرانرژی، پس‌زمینه خیابانی...',
+    lineWeightLabel: 'ضخامت جوهر خطوط',
+    goToStoryboard: 'مشاهده جزئیات صحنه‌ها',
+    storyboardTitle: 'بازبینی خودکار صحنه‌ها (در صورت نیاز قابل ویرایش)',
     storyboardSubtitle:
-      'متن روی تصویر، کلمه کلیدی، زاویه زوم، نوع ترنزیشن، ژست کاراکتر و لباس هر صحنه را ویرایش کنید.',
+      'تمام هوک‌ها، مینی‌هوک‌ها، زوم‌ها و موشن‌گرافیک‌ها خودکار چیده شده‌اند؛ هر بخشی را بخواهید می‌توانید تغییر دهید.',
     addScene: 'افزودن صحنه جدید',
-    buildAllConcurrent: 'شروع ساخت همزمان صحنه‌ها',
+    buildAllConcurrent: 'تولید همزمان صحنه‌ها و نمایش خروجی',
     buildingConcurrent: 'در حال ساخت همزمان صحنه‌ها...',
-    editTranscript: 'متن کامل پیاده‌شده صدا',
-    narrationLabel: 'متن زیرنویس / گفتار',
+    editTranscript: 'متن کامل سناریوی ویدیو (با هوک، مینی‌هوک و کال‌تواکشن پایانی)',
+    narrationLabel: 'متن گفتار / زیرنویس',
     headlineLabel: 'تیتر بزرگ موشن‌گرافیک',
     highlightWordLabel: 'کلمه هایلایت رنگی',
+    thoughtBubbleLabel: 'حباب فکر کاراکتر',
     durationLabel: 'مدت زمان (ثانیه)',
     poseLabel: 'ژست کاراکتر',
     emotionLabel: 'حالت چهره',
@@ -118,9 +140,9 @@ export const COPY: Record<
     inheritOutfit: 'لباس اصلی کاراکتر',
     regenerateArt: 'ساخت مجدد تصویر صحنه',
     deleteScene: 'حذف صحنه',
-    liveProductionTitle: 'استودیو ساخت همزمان و رندر نهایی ویدیو',
+    liveProductionTitle: 'تولید همزمان تصاویر و پخش‌کننده ویدیو نهایی',
     liveProductionSubtitle:
-      'صحنه‌ها به صورت موازی و زنده تصویرسازی می‌شوند؛ همزمان پیش‌نمایش تمام‌صفحه را ببینید و خروجی ویدیو را دانلود کنید.',
+      'صحنه‌های کمیک به صورت موازی تولید می‌شوند؛ نتیجه نهایی را با زوم، ترنزیشن و موشن‌گرافیک ببینید و دانلود کنید.',
     playVideo: 'پخش ویدیو',
     pauseVideo: 'توقف',
     restartVideo: 'از ابتدا',
@@ -132,28 +154,40 @@ export const COPY: Record<
     totalDurationLabel: 'مدت کل',
     scenesLabel: 'تعداد صحنه',
     progressLabel: 'پیشرفت کل',
-    noAudioWarning: 'لطفاً ابتدا یک فایل صوتی ارسال کنید، ضبط کنید یا صدای نمونه را بارگذاری کنید.',
+    noAudioWarning:
+      'لطفاً ابتدا یک فایل صوتی ارسال کنید، ضبط کنید یا صدای نمونه را بارگذاری کنید.',
+    noTopicWarning: 'لطفاً موضوع ویدیو را بنویسید تا سناریو و ویدیو خودکار ساخته شود.',
   },
   en: {
     brand: 'UpVid Studio',
-    navSetup: '1. Audio & Character',
-    navStoryboard: '2. Storyboard Editor',
-    navProduction: '3. Live Build & Export',
-    primaryBuildBtn: 'Build Stickman Video',
+    navSetup: '1. Topic / Audio & Cast',
+    navStoryboard: '2. Auto Storyboard',
+    navProduction: '3. Auto Build & Export',
+    primaryBuildBtn: 'Auto-Build Video',
     primaryExportBtn: 'Export Final Video',
-    heroTitle: 'Turn Voiceover Audio into High-Retention YouTube Stickman Videos',
+    heroTitle: 'Fully Automated Comic Stickman YouTube Video Studio',
     heroSubtitle:
-      'Upload or record your narration, customize your stickman outfit and props, edit any scene at any stage, watch scenes build concurrently, and download the finished motion-graphics video.',
-    audioPanelTitle: 'Voiceover Audio & AI Breakdown',
+      'Enter just a video topic or drop your voiceover—UpVid writes a high-retention script with hooks, mini-hooks & subscribe CTA, renders expressive comic stickman art, and auto-edits with pro motion graphics.',
+    audioPanelTitle: 'Topic Auto-Pilot or Voiceover Input',
+    modeTopicTab: 'Topic Only (No Voice Needed)',
+    modeAudioTab: 'Upload / Record Audio',
+    topicLabel: 'What is your YouTube video about?',
+    topicPlaceholder:
+      'e.g. Why 90% of people wake up at 3 AM without knowing the real reason',
+    generateFromTopicBtn: 'Write Script + Generate Voice + Auto-Build Video',
+    generatingFromTopic: 'Writing viral script, generating voiceover & auto-editing...',
     dropAudioTitle: 'Drop audio file here or click to browse',
     dropAudioHint: 'Supports MP3, WAV, M4A, OGG, WEBM',
     recordMic: 'Record Microphone',
     stopMic: 'Stop Recording',
     loadSampleFa: 'Persian Sample Audio',
     loadSampleEn: 'English Sample Audio',
-    analyzeWithAi: 'Transcribe & Auto-Direct Scenes',
-    analyzingAudio: 'Transcribing audio & directing fast YouTube cuts...',
-    characterPanelTitle: 'Stickman Outfit & Style Customizer',
+    analyzeWithAi: 'Transcribe & Auto-Build Full Video',
+    analyzingAudio: 'Transcribing audio & auto-directing fast cuts...',
+    autoEditNote:
+      'Cuts, camera zooms, fast transitions, and Subscribe CTA end-card are edited automatically.',
+    characterPanelTitle: 'Comic Stickman Style & Outfit Designer',
+    styleModeLabel: 'Comic Art Style Mode',
     outfitLabel: 'Character Outfit',
     outfitColorLabel: 'Outfit Color',
     accentColorLabel: 'Motion Accent',
@@ -161,19 +195,20 @@ export const COPY: Record<
     eyewearLabel: 'Eyewear',
     themeLabel: 'Canvas Theme',
     customNotesLabel: 'Custom Character & Style Notes',
-    customNotesPlaceholder: 'e.g. Black hoodie, energetic hand gestures, crisp explainer vibe...',
+    customNotesPlaceholder: 'e.g. Red hoodie, big comic eyes, sketchy street backdrop...',
     lineWeightLabel: 'Ink Thickness',
-    goToStoryboard: 'Open Storyboard Editor',
-    storyboardTitle: 'Scene-by-Scene Storyboard Editor',
+    goToStoryboard: 'Inspect Auto Scenes',
+    storyboardTitle: 'Auto-Directed Storyboard (Optional Overrides)',
     storyboardSubtitle:
-      'Edit kinetic headlines, highlight words, zoom/pan camera moves, fast transitions, character poses, and per-scene outfits anytime.',
+      'Hooks, mini-hooks, zooms, fast transitions, and motion graphics are already auto-edited. Tweak any scene if desired.',
     addScene: 'Add New Scene',
     buildAllConcurrent: 'Build Scenes Concurrently',
     buildingConcurrent: 'Building scenes in parallel...',
-    editTranscript: 'Full Audio Transcript',
+    editTranscript: 'Full Video Script (Hook, Mini-Hooks & Subscribe/Next-Video CTA)',
     narrationLabel: 'Subtitle / Spoken Line',
     headlineLabel: 'Kinetic Headline Text',
     highlightWordLabel: 'Accent Highlight Word',
+    thoughtBubbleLabel: 'Thought Bubble',
     durationLabel: 'Duration (sec)',
     poseLabel: 'Character Pose',
     emotionLabel: 'Facial Expression',
@@ -187,7 +222,7 @@ export const COPY: Record<
     deleteScene: 'Delete Scene',
     liveProductionTitle: 'Concurrent Live Build & Cinema Export',
     liveProductionSubtitle:
-      'Watch every scene illustration render in parallel while previewing the full motion-graphics timeline and exporting your downloadable video.',
+      'Watch comic scenes render in parallel while previewing fast transitions, zoom rigs, motion graphics, and downloading your video.',
     playVideo: 'Play Video',
     pauseVideo: 'Pause',
     restartVideo: 'Restart',
@@ -200,5 +235,6 @@ export const COPY: Record<
     scenesLabel: 'Scenes',
     progressLabel: 'Build Progress',
     noAudioWarning: 'Please upload an audio file, record via microphone, or load a sample track first.',
+    noTopicWarning: 'Please enter a video topic to auto-generate the script and video.',
   },
 };

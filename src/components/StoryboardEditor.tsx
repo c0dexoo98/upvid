@@ -160,7 +160,10 @@ export function StoryboardEditor({
                   <span dir="ltr" className="font-semibold text-white">
                     #{idx + 1} · {formatTimecode(scene.startTime)} – {formatTimecode(scene.endTime)}
                   </span>
-                  <span className="text-orange-400">{scene.buildStepLabel}</span>
+                  <span className="text-orange-400">
+                    {scene.sceneRole ? `${scene.sceneRole} · ` : ''}
+                    {scene.buildStepLabel}
+                  </span>
                 </div>
 
                 <SceneMiniCanvas
@@ -447,31 +450,53 @@ export function StoryboardEditor({
                   </select>
                 </div>
 
-                <div className="sm:col-span-2 md:col-span-3">
-                  <label
-                    htmlFor={`outfit-override-${scene.id}`}
-                    className="block text-xs font-medium text-slate-300 mb-1"
-                  >
-                    {t.outfitOverrideLabel}
-                  </label>
-                  <select
-                    id={`outfit-override-${scene.id}`}
-                    value={scene.outfitOverride ?? ''}
-                    onChange={(e) =>
-                      onUpdateScene(scene.id, {
-                        outfitOverride: e.target.value
-                          ? (e.target.value as OutfitId)
-                          : undefined,
-                      })
-                    }
-                    className="w-full sm:w-64 rounded-lg border border-white/15 bg-[#0B0D12] px-2.5 py-2 text-xs text-white focus:border-orange-500 focus:outline-none"
-                  >
-                    {OUTFIT_OVERRIDE_OPTIONS.map((opt) => (
-                      <option key={opt.value || 'inherit'} value={opt.value}>
-                        {language === 'fa' ? opt.labelFa : opt.labelEn}
-                      </option>
-                    ))}
-                  </select>
+                <div className="sm:col-span-2 md:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <label
+                      htmlFor={`outfit-override-${scene.id}`}
+                      className="block text-xs font-medium text-slate-300 mb-1"
+                    >
+                      {t.outfitOverrideLabel}
+                    </label>
+                    <select
+                      id={`outfit-override-${scene.id}`}
+                      value={scene.outfitOverride ?? ''}
+                      onChange={(e) =>
+                        onUpdateScene(scene.id, {
+                          outfitOverride: e.target.value
+                            ? (e.target.value as OutfitId)
+                            : undefined,
+                        })
+                      }
+                      className="w-full rounded-lg border border-white/15 bg-[#0B0D12] px-2.5 py-2 text-xs text-white focus:border-orange-500 focus:outline-none"
+                    >
+                      {OUTFIT_OVERRIDE_OPTIONS.map((opt) => (
+                        <option key={opt.value || 'inherit'} value={opt.value}>
+                          {language === 'fa' ? opt.labelFa : opt.labelEn}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor={`thought-${scene.id}`}
+                      className="block text-xs font-medium text-slate-300 mb-1"
+                    >
+                      {t.thoughtBubbleLabel}
+                    </label>
+                    <input
+                      id={`thought-${scene.id}`}
+                      type="text"
+                      maxLength={4}
+                      value={scene.thoughtBubble ?? ''}
+                      onChange={(e) =>
+                        onUpdateScene(scene.id, { thoughtBubble: e.target.value })
+                      }
+                      placeholder="؟ / ! / ⚡ / ★"
+                      className="w-full rounded-lg border border-white/15 bg-[#0B0D12] px-3 py-2 text-xs text-white focus:border-orange-500 focus:outline-none"
+                    />
+                  </div>
                 </div>
               </div>
             </article>

@@ -8,6 +8,7 @@ import type {
   Language,
   OutfitId,
   StickmanPose,
+  StickmanStyleMode,
 } from '../types/studio';
 import { COPY } from '../utils/i18n';
 import { POSE_OPTIONS } from '../utils/studioLogic';
@@ -20,6 +21,13 @@ interface CharacterCustomizerProps {
   onChangeCharacter: (next: CharacterConfig) => void;
   onChangeTheme: (theme: CanvasTheme) => void;
 }
+
+const STYLE_MODES: { id: StickmanStyleMode; fa: string; en: string }[] = [
+  { id: 'comic-classic', fa: 'کمیک کلاسیک (پرانرژی)', en: 'Comic Classic' },
+  { id: 'horror-mystery', fa: 'ترسناک و رازآلود (زامبی)', en: 'Horror / Mystery' },
+  { id: 'cyber-tech', fa: 'تکنولوژی و مدرن', en: 'Cyber & Tech' },
+  { id: 'money-business', fa: 'بیزینس و موفقیت', en: 'Business & Wealth' },
+];
 
 const OUTFITS: { id: OutfitId; fa: string; en: string }[] = [
   { id: 'hoodie', fa: 'هودی اسپرت', en: 'Hoodie' },
@@ -49,14 +57,14 @@ const EYEWEAR: { id: EyewearId; fa: string; en: string }[] = [
 const THEMES: { id: CanvasTheme; fa: string; en: string; swatch: string }[] = [
   { id: 'dark-studio', fa: 'استودیو تیره', en: 'Dark Studio', swatch: '#0F1219' },
   { id: 'chalkboard', fa: 'تخته‌سیاه آموزشی', en: 'Chalkboard', swatch: '#13211B' },
-  { id: 'sketchbook', fa: 'کاغذ طراحی سفید', en: 'Sketch Paper', swatch: '#F5F2EB' },
+  { id: 'sketchbook', fa: 'کاغذ کمیک سفید', en: 'Comic Paper', swatch: '#F7F4EC' },
   { id: 'blueprint', fa: 'نقشه مهندسی آبی', en: 'Blueprint', swatch: '#0B1E3B' },
 ];
 
 const OUTFIT_COLORS = [
+  '#DC2626',
   '#F97316',
   '#38BDF8',
-  '#EF4444',
   '#10B981',
   '#A855F7',
   '#FACC15',
@@ -74,7 +82,7 @@ export function CharacterCustomizer({
 }: CharacterCustomizerProps) {
   const t = COPY[language];
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [previewPose, setPreviewPose] = useState<StickmanPose>('presenting');
+  const [previewPose, setPreviewPose] = useState<StickmanPose>('thinking');
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -90,7 +98,6 @@ export function CharacterCustomizer({
       const palette = getThemePalette(theme);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Subtle background matching selected theme
       ctx.fillStyle = palette.bgPrimary;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -116,7 +123,7 @@ export function CharacterCustomizer({
         character,
         outfit: character.outfit,
         pose: previewPose,
-        emotion: 'happy',
+        emotion: character.styleMode === 'horror-mystery' ? 'shocked' : 'curious',
         strokeColor: palette.stickmanStroke,
         time: elapsed,
         isTalking: true,
@@ -151,7 +158,7 @@ export function CharacterCustomizer({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
-        {/* Live Animated Stickman Canvas Preview */}
+        {/* Live Animated Comic Stickman Canvas Preview */}
         <div className="lg:col-span-5 flex flex-col gap-3">
           <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[#0B0D12] aspect-square flex items-center justify-center">
             <canvas
@@ -185,7 +192,7 @@ export function CharacterCustomizer({
               }
               className="w-full accent-orange-500"
             />
-            <span className="text-xs font-mono-tabular text-slate-400">
+            <span dir="ltr" className="text-xs font-mono-tabular text-slate-400">
               {character.lineThickness}px
             </span>
           </div>
@@ -193,6 +200,34 @@ export function CharacterCustomizer({
 
         {/* Controls Grid */}
         <div className="lg:col-span-7 flex flex-col gap-4">
+          {/* Comic Art Style Mode */}
+          <div>
+            <span className="block text-xs font-semibold text-slate-300 mb-2">
+              {t.styleModeLabel}
+            </span>
+            <div className="grid grid-cols-2 gap-2">
+              {STYLE_MODES.map((sm) => {
+                const active = character.styleMode === sm.id;
+                return (
+                  <button
+                    key={sm.id}
+                    type="button"
+                    onClick={() =>
+                      onChangeCharacter({ ...character, styleMode: sm.id })
+                    }
+                    className={`rounded-lg border px-3 py-2 text-xs font-medium text-start transition-colors whitespace-nowrap truncate ${
+                      active
+                        ? 'border-orange-500 bg-orange-500/15 text-white'
+                        : 'border-white/10 bg-[#0B0D12] text-slate-300 hover:border-white/25'
+                    }`}
+                  >
+                    {language === 'fa' ? sm.fa : sm.en}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Outfit Selector */}
           <div>
             <span className="block text-xs font-semibold text-slate-300 mb-2">

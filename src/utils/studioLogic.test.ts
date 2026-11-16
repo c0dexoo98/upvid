@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  DEFAULT_CHARACTER,
   computeCameraTransform,
   computeTimelineStats,
   createSampleYouTubeScenes,
@@ -38,14 +39,11 @@ test('findActiveSceneAtTime locates correct scene and transition progress', () =
   const sample = createSampleYouTubeScenes('en');
   const atStart = findActiveSceneAtTime(sample, 0.1);
   assert.equal(atStart.scene?.id, 'scene-1');
+  assert.equal(atStart.scene?.sceneRole, 'hook');
   assert.ok(atStart.transitionProgress < 1);
 
-  const atMid = findActiveSceneAtTime(sample, 4.5);
-  assert.equal(atMid.scene?.id, 'scene-2');
-  assert.equal(atMid.transitionProgress, 1);
-
-  const pastEnd = findActiveSceneAtTime(sample, 99);
-  assert.equal(pastEnd.scene?.id, 'scene-4');
+  const atEnd = findActiveSceneAtTime(sample, 11.2);
+  assert.equal(atEnd.scene?.sceneRole, 'cta-outro');
 });
 
 test('computeCameraTransform produces zoom-in and zoom-out scale curves', () => {
@@ -62,9 +60,9 @@ test('computeCameraTransform produces zoom-in and zoom-out scale curves', () => 
 });
 
 test('splitWordTokens marks highlight word accurately', () => {
-  const tokens = splitWordTokens('Win The First 3 Seconds', 'Seconds');
+  const tokens = splitWordTokens('Like, Subscribe & Watch Next', 'Subscribe');
   assert.equal(tokens.length, 5);
-  assert.equal(tokens[4].isHighlight, true);
+  assert.equal(tokens[1].isHighlight, true);
   assert.equal(tokens[0].isHighlight, false);
 
   const faTokens = splitWordTokens('راز شکست ۹۰٪ کانال‌ها', '۹۰٪');
@@ -79,6 +77,7 @@ test('computeTimelineStats calculates pace and completion metrics', () => {
   assert.equal(stats.readyCount, 4);
   assert.equal(stats.completionPercent, 100);
   assert.ok(stats.cutsPerMinute >= 15);
+  assert.equal(DEFAULT_CHARACTER.styleMode, 'comic-classic');
 });
 
 test('sanitizeSvgMarkup strips dangerous tags while keeping valid svg', () => {

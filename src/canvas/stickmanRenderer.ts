@@ -25,7 +25,9 @@ export interface ThemePalette {
   textColor: string;
   subTextColor: string;
   stickmanStroke: string;
+  headFill: string;
   cardSurface: string;
+  comicInk: string;
 }
 
 export function getThemePalette(theme: CanvasTheme): ThemePalette {
@@ -38,17 +40,21 @@ export function getThemePalette(theme: CanvasTheme): ThemePalette {
         textColor: '#F8FAFC',
         subTextColor: '#CBD5E1',
         stickmanStroke: '#F8FAFC',
-        cardSurface: 'rgba(15, 23, 20, 0.78)',
+        headFill: '#F8FAFC',
+        cardSurface: 'rgba(15, 23, 20, 0.82)',
+        comicInk: 'rgba(255, 255, 255, 0.14)',
       };
     case 'sketchbook':
       return {
-        bgPrimary: '#F5F2EB',
-        bgSecondary: '#EAE4D7',
-        gridColor: 'rgba(15, 23, 42, 0.06)',
+        bgPrimary: '#F7F4EC',
+        bgSecondary: '#EAE4D6',
+        gridColor: 'rgba(15, 23, 42, 0.07)',
         textColor: '#0F172A',
         subTextColor: '#334155',
         stickmanStroke: '#111827',
-        cardSurface: 'rgba(255, 255, 255, 0.85)',
+        headFill: '#FFFFFF',
+        cardSurface: 'rgba(255, 255, 255, 0.90)',
+        comicInk: 'rgba(15, 23, 42, 0.18)',
       };
     case 'blueprint':
       return {
@@ -58,23 +64,26 @@ export function getThemePalette(theme: CanvasTheme): ThemePalette {
         textColor: '#F0F9FF',
         subTextColor: '#BAE6FD',
         stickmanStroke: '#F0F9FF',
-        cardSurface: 'rgba(7, 20, 41, 0.82)',
+        headFill: '#F8FAFC',
+        cardSurface: 'rgba(7, 20, 41, 0.85)',
+        comicInk: 'rgba(186, 230, 253, 0.16)',
       };
     case 'dark-studio':
     default:
       return {
-        bgPrimary: '#0F1219',
-        bgSecondary: '#090B10',
-        gridColor: 'rgba(255, 255, 255, 0.055)',
+        bgPrimary: '#11151F',
+        bgSecondary: '#080A10',
+        gridColor: 'rgba(255, 255, 255, 0.05)',
         textColor: '#F8FAFC',
         subTextColor: '#CBD5E1',
         stickmanStroke: '#F8FAFC',
-        cardSurface: 'rgba(15, 18, 25, 0.84)',
+        headFill: '#F4F4F5',
+        cardSurface: 'rgba(15, 18, 25, 0.86)',
+        comicInk: 'rgba(255, 255, 255, 0.10)',
       };
   }
 }
 
-// Cache sanitized SVG markup -> HTMLImageElement for instant 60fps Canvas drawing
 const svgImageCache = new Map<string, HTMLImageElement>();
 
 function getCachedSvgImage(rawSvg: string | undefined): HTMLImageElement | null {
@@ -121,8 +130,8 @@ function drawBackground(
   time: number
 ) {
   const grad = ctx.createRadialGradient(
-    width * 0.5,
-    height * 0.42,
+    width * 0.48,
+    height * 0.45,
     width * 0.05,
     width * 0.5,
     height * 0.5,
@@ -151,13 +160,86 @@ function drawBackground(
   }
   ctx.stroke();
 
-  // Subtle studio radial glow behind character
+  // Sketchy comic perspective floor & distant street silhouettes (like reference comic panel)
   ctx.save();
-  ctx.globalAlpha = 0.14;
+  ctx.strokeStyle = palette.comicInk;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, height * 0.72);
+  ctx.lineTo(width, height * 0.66);
+  ctx.moveTo(0, height * 0.80);
+  ctx.lineTo(width, height * 0.75);
+  ctx.stroke();
+
+  // Subtle comic architectural lines in upper left/back
+  ctx.beginPath();
+  ctx.moveTo(width * 0.07, height * 0.14);
+  ctx.lineTo(width * 0.07, height * 0.71);
+  ctx.moveTo(width * 0.16, height * 0.10);
+  ctx.lineTo(width * 0.16, height * 0.70);
+  ctx.stroke();
+
+  // Tiny distant background stick silhouettes for comic depth
+  const bgFigs = [
+    { x: width * 0.11, y: height * 0.63, s: 0.42 },
+    { x: width * 0.15, y: height * 0.635, s: 0.4 },
+    { x: width * 0.90, y: height * 0.61, s: 0.36 },
+  ];
+  bgFigs.forEach((f) => {
+    ctx.save();
+    ctx.translate(f.x, f.y);
+    ctx.scale(f.s, f.s);
+    ctx.strokeStyle = palette.comicInk;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, -24, 10, 0, Math.PI * 2);
+    ctx.moveTo(0, -14);
+    ctx.lineTo(0, 12);
+    ctx.moveTo(-8, -6);
+    ctx.lineTo(8, -6);
+    ctx.moveTo(0, 12);
+    ctx.lineTo(-6, 30);
+    ctx.moveTo(0, 12);
+    ctx.lineTo(6, 30);
+    ctx.stroke();
+    ctx.restore();
+  });
+  ctx.restore();
+
+  // Subtle studio radial spotlight behind main character
+  ctx.save();
+  ctx.globalAlpha = 0.16;
   ctx.fillStyle = accentColor;
   ctx.beginPath();
-  ctx.arc(width * 0.34, height * 0.56, width * 0.22, 0, Math.PI * 2);
+  ctx.arc(width * 0.32, height * 0.56, width * 0.22, 0, Math.PI * 2);
   ctx.fill();
+  ctx.restore();
+}
+
+function drawComicSpeedLines(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  accentColor: string,
+  intensity: number,
+  time: number
+) {
+  if (intensity <= 0.02) return;
+  ctx.save();
+  ctx.translate(width * 0.5, height * 0.5);
+  ctx.strokeStyle = accentColor;
+  ctx.globalAlpha = clampNumber(intensity * 0.32, 0, 0.4);
+  ctx.lineWidth = 2.5;
+  const rays = 28;
+  for (let i = 0; i < rays; i++) {
+    const angle = (i / rays) * Math.PI * 2 + time * 0.4;
+    const innerR = width * (0.38 + ((i * 17) % 10) * 0.012);
+    const outerR = width * 0.72;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(angle) * innerR, Math.sin(angle) * innerR);
+    ctx.lineTo(Math.cos(angle) * outerR, Math.sin(angle) * outerR);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
@@ -177,15 +259,15 @@ function drawMotionGraphicLayer(
 
   switch (style) {
     case 'spotlight-ring': {
-      const cx = width * 0.34;
-      const cy = height * 0.54;
-      const r = width * 0.19 * enter;
+      const cx = width * 0.32;
+      const cy = height * 0.55;
+      const r = width * 0.20 * enter;
       ctx.strokeStyle = accentColor;
       ctx.lineWidth = 4;
-      ctx.setLineDash([18, 12]);
+      ctx.setLineDash([20, 12]);
       ctx.save();
       ctx.translate(cx, cy);
-      ctx.rotate(time * 0.7);
+      ctx.rotate(time * 0.75);
       ctx.beginPath();
       ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.stroke();
@@ -193,17 +275,17 @@ function drawMotionGraphicLayer(
 
       ctx.setLineDash([]);
       ctx.strokeStyle = outfitColor;
-      ctx.globalAlpha = 0.45;
-      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.5;
+      ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(cx, cy, r * 1.15, -0.4, Math.PI * 1.1);
+      ctx.arc(cx, cy, r * 1.14, -0.4, Math.PI * 1.15);
       ctx.stroke();
       break;
     }
     case 'chart-rise': {
-      const baseX = width * 0.57;
+      const baseX = width * 0.56;
       const baseY = height * 0.78;
-      const barW = 30;
+      const barW = 32;
       const heights = [48, 80, 118, 164];
       heights.forEach((h, idx) => {
         const delay = idx * 0.08;
@@ -213,12 +295,11 @@ function drawMotionGraphicLayer(
         const bh = h * barProg;
         const bx = baseX + idx * (barW + 16);
         ctx.fillStyle = idx === heights.length - 1 ? outfitColor : accentColor;
-        ctx.globalAlpha = idx === heights.length - 1 ? 0.92 : 0.38;
+        ctx.globalAlpha = idx === heights.length - 1 ? 0.92 : 0.42;
         drawRoundedRect(ctx, bx, baseY - bh, barW, bh, 8);
         ctx.fill();
       });
-      // Rising trend arrow safely below headline zone
-      ctx.globalAlpha = 0.85;
+      ctx.globalAlpha = 0.88;
       ctx.strokeStyle = palette.textColor;
       ctx.lineWidth = 4.5;
       ctx.lineCap = 'round';
@@ -236,8 +317,8 @@ function drawMotionGraphicLayer(
       for (let i = 0; i < 3; i++) {
         const shift = ((time * 120 + i * 70) % 210) - 60;
         ctx.globalAlpha = 0.25 + i * 0.22;
-        const ax = width * 0.52 + shift;
-        const ay = height * (0.42 + i * 0.11);
+        const ax = width * 0.51 + shift;
+        const ay = height * (0.43 + i * 0.11);
         ctx.beginPath();
         ctx.moveTo(ax, ay);
         ctx.lineTo(ax + 70, ay);
@@ -249,15 +330,16 @@ function drawMotionGraphicLayer(
       break;
     }
     case 'lightning-pop': {
+      drawComicSpeedLines(ctx, width, height, outfitColor, 1 - localProgress * 0.4, time);
       ctx.strokeStyle = outfitColor;
       ctx.lineWidth = 4;
       const bolts = [
-        [0.16, 0.22],
-        [0.86, 0.26],
-        [0.82, 0.72],
+        [0.14, 0.22],
+        [0.88, 0.26],
+        [0.84, 0.72],
       ];
       bolts.forEach(([rx, ry], idx) => {
-        const pulse = 0.7 + 0.3 * Math.sin(time * 8 + idx * 2);
+        const pulse = 0.75 + 0.25 * Math.sin(time * 9 + idx * 2);
         ctx.save();
         ctx.translate(width * rx, height * ry);
         ctx.scale(enter * pulse, enter * pulse);
@@ -279,29 +361,26 @@ function drawMotionGraphicLayer(
       ctx.globalAlpha = 0.16;
       ctx.fillStyle = accentColor;
       ctx.fillRect(width * 0.54, 0, width * 0.46, height);
-      ctx.globalAlpha = 0.75;
+      ctx.globalAlpha = 0.78;
       ctx.strokeStyle = outfitColor;
       ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.moveTo(width * 0.54, height * 0.12);
+      ctx.moveTo(width * 0.54, height * 0.10);
       ctx.lineTo(width * 0.54, height * 0.88);
       ctx.stroke();
       break;
     }
     case 'kinetic-callout':
     default: {
-      // Corner motion brackets & sweeping arc
       ctx.strokeStyle = accentColor;
-      ctx.lineWidth = 3;
-      ctx.globalAlpha = 0.55;
-      const pad = 34;
-      const len = 36 * enter;
-      // Top-left bracket
+      ctx.lineWidth = 3.5;
+      ctx.globalAlpha = 0.6;
+      const pad = 28;
+      const len = 42 * enter;
       ctx.beginPath();
       ctx.moveTo(pad, pad + len);
       ctx.lineTo(pad, pad);
       ctx.lineTo(pad + len, pad);
-      // Bottom-right bracket
       ctx.moveTo(width - pad, height - pad - len);
       ctx.lineTo(width - pad, height - pad);
       ctx.lineTo(width - pad - len, height - pad);
@@ -310,6 +389,65 @@ function drawMotionGraphicLayer(
     }
   }
 
+  ctx.restore();
+}
+
+function drawThoughtBubble(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  symbol: string,
+  accentColor: string,
+  pop: number,
+  time: number
+) {
+  if (!symbol || pop <= 0.05) return;
+  ctx.save();
+  const bob = Math.sin(time * 4.2) * 5;
+  ctx.translate(x, y + bob);
+  ctx.scale(pop, pop);
+
+  // Trailing thought dots
+  ctx.fillStyle = '#FFFFFF';
+  ctx.strokeStyle = '#111827';
+  ctx.lineWidth = 3;
+  [
+    { dx: -44, dy: 46, r: 6 },
+    { dx: -28, dy: 30, r: 10 },
+  ].forEach((dot) => {
+    ctx.beginPath();
+    ctx.arc(dot.dx, dot.dy, dot.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  });
+
+  // Cloud bubble: stroke outer silhouette first, then fill white inside so no internal lines cross
+  const puffs = [
+    { cx: 0, cy: 0, r: 34 },
+    { cx: -26, cy: 4, r: 22 },
+    { cx: 26, cy: 4, r: 22 },
+    { cx: -14, cy: -20, r: 22 },
+    { cx: 16, cy: -20, r: 22 },
+  ];
+  ctx.strokeStyle = '#111827';
+  ctx.lineWidth = 6;
+  puffs.forEach((p) => {
+    ctx.beginPath();
+    ctx.arc(p.cx, p.cy, p.r, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+  ctx.fillStyle = '#FFFFFF';
+  puffs.forEach((p) => {
+    ctx.beginPath();
+    ctx.arc(p.cx, p.cy, p.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  ctx.fillStyle = symbol === '!' || symbol === '؟' || symbol === '?' ? '#111827' : accentColor;
+  ctx.font = '900 38px "Lalezar", "Rubik", "Vazirmatn", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(symbol, 0, 0);
   ctx.restore();
 }
 
@@ -330,12 +468,17 @@ function drawBuiltinProp(
   ctx.translate(x, y + bob);
   ctx.scale(scale, scale);
 
-  // Soft badge backing
+  // Comic panel badge backing with ink border
   ctx.fillStyle = palette.cardSurface;
+  ctx.strokeStyle = '#111827';
+  ctx.lineWidth = 6;
+  drawRoundedRect(ctx, -88, -88, 176, 176, 28);
+  ctx.fill();
+  ctx.stroke();
+
   ctx.strokeStyle = accentColor;
   ctx.lineWidth = 3;
-  drawRoundedRect(ctx, -88, -88, 176, 176, 32);
-  ctx.fill();
+  drawRoundedRect(ctx, -84, -84, 168, 168, 24);
   ctx.stroke();
 
   ctx.lineCap = 'round';
@@ -371,7 +514,6 @@ function drawBuiltinProp(
       ctx.beginPath();
       ctx.arc(0, -10, 11, 0, Math.PI * 2);
       ctx.fill();
-      // Flame
       const flick = 1 + 0.25 * Math.sin(time * 24);
       ctx.fillStyle = outfitColor;
       ctx.beginPath();
@@ -491,6 +633,87 @@ function drawBuiltinProp(
   ctx.restore();
 }
 
+function drawCartoonHand(
+  ctx: CanvasRenderingContext2D,
+  hx: number,
+  hy: number,
+  angle: number,
+  fill: string,
+  ink: string
+) {
+  ctx.save();
+  ctx.translate(hx, hy);
+  ctx.rotate(angle);
+  ctx.fillStyle = fill;
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 2.6;
+
+  // Palm
+  ctx.beginPath();
+  ctx.arc(0, 0, 8.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Expressive cartoon fingers (4 fingers like reference comic illustration)
+  const fingers = [-0.55, -0.15, 0.25, 0.65];
+  fingers.forEach((fa) => {
+    ctx.save();
+    ctx.rotate(fa);
+    ctx.beginPath();
+    ctx.ellipse(0, -11, 2.5, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  });
+  ctx.restore();
+}
+
+function drawSneaker(
+  ctx: CanvasRenderingContext2D,
+  sx: number,
+  sy: number,
+  flipX: number,
+  color: string,
+  ink: string
+) {
+  ctx.save();
+  ctx.translate(sx, sy);
+  ctx.scale(flipX, 1);
+
+  // Shoe upper
+  ctx.fillStyle = color;
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 3.2;
+  ctx.beginPath();
+  ctx.moveTo(-14, -12);
+  ctx.lineTo(12, -12);
+  ctx.quadraticCurveTo(28, -4, 28, 8);
+  ctx.lineTo(-18, 8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // White toe cap & sole
+  ctx.fillStyle = '#F8FAFC';
+  ctx.beginPath();
+  ctx.arc(20, 4, 8, -Math.PI / 2, Math.PI / 2);
+  ctx.fill();
+  ctx.fillRect(-18, 6, 46, 5);
+  ctx.strokeRect(-18, 6, 46, 5);
+
+  // Laces
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(2, -7);
+  ctx.lineTo(9, -5);
+  ctx.moveTo(5, -2);
+  ctx.lineTo(12, 0);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
 export function drawStickmanCharacter(
   ctx: CanvasRenderingContext2D,
   opts: {
@@ -519,13 +742,18 @@ export function drawStickmanCharacter(
     isTalking,
   } = opts;
 
+  const isHorror = character.styleMode === 'horror-mystery';
+  const ink = '#0D1017';
+  const limbStroke = strokeColor === '#F8FAFC' ? '#0D1017' : strokeColor;
+  const handFill = isHorror ? '#CBD5E1' : '#0D1017';
+
   ctx.save();
   const bounce =
     pose === 'walking'
-      ? Math.abs(Math.sin(time * 9)) * -14
+      ? Math.abs(Math.sin(time * 9)) * -12
       : pose === 'celebrating'
-      ? Math.abs(Math.sin(time * 7)) * -18
-      : Math.sin(time * 3.2) * 4;
+      ? Math.abs(Math.sin(time * 7)) * -16
+      : Math.sin(time * 3.1) * 4;
 
   ctx.translate(x, y + bounce);
   ctx.scale(scale, scale);
@@ -534,375 +762,536 @@ export function drawStickmanCharacter(
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
 
-  // Ground shadow
+  // Comic cross-hatched ground shadow (matching 1st reference image)
   ctx.save();
-  ctx.globalAlpha = 0.22;
-  ctx.fillStyle = '#000000';
-  ctx.beginPath();
-  ctx.ellipse(0, 148 - bounce * 0.4, 52, 12, 0, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  ctx.lineWidth = 2;
+  for (let i = -48; i <= 48; i += 6) {
+    const h = Math.sqrt(Math.max(0, 1 - (i / 52) * (i / 52))) * 10;
+    ctx.beginPath();
+    ctx.moveTo(i - 6, 152 - h * 0.4);
+    ctx.lineTo(i + 8, 152 + h * 0.4);
+    ctx.stroke();
+  }
   ctx.restore();
 
-  // Legs
-  ctx.strokeStyle = strokeColor;
-  ctx.lineWidth = inkWidth + 1;
+  // Legs (inked black comic stick legs with outer white halo if dark bg)
   const walkSwing = pose === 'walking' ? Math.sin(time * 9) * 26 : 0;
+  const drawLimb = (x1: number, y1: number, cx: number, cy: number, x2: number, y2: number) => {
+    if (strokeColor === '#F8FAFC') {
+      ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+      ctx.lineWidth = inkWidth + 4;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.quadraticCurveTo(cx, cy, x2, y2);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = '#0D1017';
+    ctx.lineWidth = inkWidth + 1;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.quadraticCurveTo(cx, cy, x2, y2);
+    ctx.stroke();
+  };
 
-  // Left leg
-  ctx.beginPath();
-  ctx.moveTo(-14, 62);
-  ctx.lineTo(-26 - walkSwing * 0.5, 108);
-  ctx.lineTo(-30 - walkSwing, 144);
-  ctx.stroke();
+  drawLimb(-15, 62, -24, 106, -28 - walkSwing, 142);
+  drawLimb(15, 62, 24, 106, 28 + walkSwing, 142);
 
-  // Right leg
-  ctx.beginPath();
-  ctx.moveTo(14, 62);
-  ctx.lineTo(26 + walkSwing * 0.5, 108);
-  ctx.lineTo(30 + walkSwing, 144);
-  ctx.stroke();
+  // Detailed Comic Sneakers (matching 2nd reference image)
+  drawSneaker(ctx, -32 - walkSwing, 144, -1, character.outfitColor, ink);
+  drawSneaker(ctx, 32 + walkSwing, 144, 1, character.outfitColor, ink);
 
-  // Sneakers / shoes
-  ctx.fillStyle = character.outfitColor;
-  ctx.beginPath();
-  ctx.ellipse(-34 - walkSwing, 146, 14, 7, 0, 0, Math.PI * 2);
-  ctx.ellipse(34 + walkSwing, 146, 14, 7, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Torso + Outfit
-  const shoulderY = -24;
-  const hipY = 64;
-
-  // Back arm / Front arm calculation based on pose
+  // Arms & Expressive 4-fingered Cartoon Hands
+  const shoulderY = -22;
+  const hipY = 68;
   const gesture = Math.sin(time * 5.2) * 14;
-  let leftHand: [number, number] = [-66, 26 + gesture * 0.4];
-  let rightHand: [number, number] = [66, 26 - gesture * 0.4];
+  let leftHand: [number, number, number] = [-66, 28 + gesture * 0.4, -0.4];
+  let rightHand: [number, number, number] = [68, 22 - gesture * 0.4, 0.4];
 
   switch (pose) {
     case 'pointing-up':
-      leftHand = [-50, 34];
-      rightHand = [64, -68 + Math.sin(time * 6) * 8];
+      leftHand = [-52, 34, -0.2];
+      rightHand = [66, -68 + Math.sin(time * 6) * 8, 0.1];
       break;
     case 'presenting':
-      leftHand = [-64, 18];
-      rightHand = [94, -18 + Math.sin(time * 5) * 10];
+      leftHand = [-62, 22, -0.3];
+      rightHand = [92, -16 + Math.sin(time * 5) * 10, 0.5];
       break;
     case 'celebrating':
-      leftHand = [-68, -74 + Math.sin(time * 8) * 10];
-      rightHand = [68, -74 - Math.sin(time * 8) * 10];
+      leftHand = [-70, -76 + Math.sin(time * 8) * 10, -0.4];
+      rightHand = [70, -76 - Math.sin(time * 8) * 10, 0.4];
       break;
     case 'thinking':
-      leftHand = [-44, 38];
-      rightHand = [24, -44];
+      leftHand = [-52, 38, -0.2];
+      rightHand = [72, -32 + Math.sin(time * 4) * 5, 0.25];
       break;
     case 'shocked':
-      leftHand = [-52, -48];
-      rightHand = [52, -48];
+      leftHand = [-56, -46, -0.3];
+      rightHand = [56, -46, 0.3];
       break;
     case 'facepalm':
-      leftHand = [-44, 34];
-      rightHand = [10, -76];
+      leftHand = [-48, 34, -0.2];
+      rightHand = [12, -74, -0.1];
       break;
     case 'idea':
-      leftHand = [-46, 32];
-      rightHand = [54, -84];
+      leftHand = [-50, 32, -0.2];
+      rightHand = [58, -84, 0.1];
       break;
     case 'typing':
-      leftHand = [-26, 28 + Math.sin(time * 22) * 6];
-      rightHand = [26, 28 + Math.cos(time * 22) * 6];
+      leftHand = [-26, 28 + Math.sin(time * 22) * 6, 0.2];
+      rightHand = [26, 28 + Math.cos(time * 22) * 6, -0.2];
       break;
     case 'chart-up':
-      leftHand = [-56, 22];
-      rightHand = [78, -56];
+      leftHand = [-56, 22, -0.2];
+      rightHand = [80, -56, 0.35];
       break;
     case 'walking':
-      leftHand = [-52 - walkSwing * 0.6, 26];
-      rightHand = [52 + walkSwing * 0.6, 26];
+      leftHand = [-54 - walkSwing * 0.6, 26, -0.3];
+      rightHand = [54 + walkSwing * 0.6, 26, 0.3];
       break;
   }
 
-  // Draw Arms first (behind jacket torso edges cleanly)
-  ctx.strokeStyle = strokeColor;
-  ctx.lineWidth = inkWidth;
-  ctx.beginPath();
-  ctx.moveTo(-26, shoulderY + 6);
-  ctx.quadraticCurveTo((-26 + leftHand[0]) / 2 - 12, (shoulderY + leftHand[1]) / 2 + 12, leftHand[0], leftHand[1]);
-  ctx.stroke();
+  // Draw curved ink arms
+  drawLimb(-28, shoulderY + 10, (-28 + leftHand[0]) / 2 - 10, (shoulderY + leftHand[1]) / 2 + 12, leftHand[0], leftHand[1]);
+  drawLimb(28, shoulderY + 10, (28 + rightHand[0]) / 2 + 10, (shoulderY + rightHand[1]) / 2 + 12, rightHand[0], rightHand[1]);
 
-  ctx.beginPath();
-  ctx.moveTo(26, shoulderY + 6);
-  ctx.quadraticCurveTo((26 + rightHand[0]) / 2 + 12, (shoulderY + rightHand[1]) / 2 + 12, rightHand[0], rightHand[1]);
-  ctx.stroke();
+  drawCartoonHand(ctx, leftHand[0], leftHand[1], leftHand[2], handFill, isHorror ? ink : '#FFFFFF');
+  drawCartoonHand(ctx, rightHand[0], rightHand[1], rightHand[2], handFill, isHorror ? ink : '#FFFFFF');
 
-  // Draw hands
-  ctx.fillStyle = strokeColor;
-  ctx.beginPath();
-  ctx.arc(leftHand[0], leftHand[1], 7, 0, Math.PI * 2);
-  ctx.arc(rightHand[0], rightHand[1], 7, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Draw Outfit Torso
+  // Detailed Layered Outfit Torso (matching hoodie folds, collar, pocket, drawstrings!)
   ctx.save();
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = 3.5;
+  ctx.strokeStyle = ink;
 
   if (outfit === 'hoodie') {
+    // Draped hood collar behind neck
     ctx.fillStyle = character.outfitColor;
-    drawRoundedRect(ctx, -32, shoulderY, 64, hipY - shoulderY + 6, 16);
-    ctx.fill();
-    ctx.stroke();
-    // Hoodie pocket & drawstrings
-    ctx.fillStyle = 'rgba(0,0,0,0.22)';
-    drawRoundedRect(ctx, -20, 26, 40, 28, 8);
-    ctx.fill();
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.moveTo(-9, shoulderY + 6);
-    ctx.lineTo(-9, shoulderY + 30);
-    ctx.moveTo(9, shoulderY + 6);
-    ctx.lineTo(9, shoulderY + 30);
+    ctx.ellipse(0, shoulderY + 2, 36, 16, 0, Math.PI, 0);
+    ctx.fill();
     ctx.stroke();
-  } else if (outfit === 'suit') {
+
+    // Main hoodie body with slight trapezoid taper & comic fold lines
     ctx.fillStyle = character.outfitColor;
-    drawRoundedRect(ctx, -32, shoulderY, 64, hipY - shoulderY + 6, 12);
-    ctx.fill();
-    ctx.stroke();
-    // White shirt V + crisp tie
-    ctx.fillStyle = '#FFFFFF';
     ctx.beginPath();
-    ctx.moveTo(-14, shoulderY);
-    ctx.lineTo(14, shoulderY);
-    ctx.lineTo(0, shoulderY + 34);
+    ctx.moveTo(-34, shoulderY + 4);
+    ctx.quadraticCurveTo(0, shoulderY - 4, 34, shoulderY + 4);
+    ctx.lineTo(38, hipY + 4);
+    ctx.quadraticCurveTo(0, hipY + 12, -38, hipY + 4);
     ctx.closePath();
     ctx.fill();
-    // Tie
+    ctx.stroke();
+
+    // Sleeve cuffs at shoulders
+    ctx.beginPath();
+    ctx.moveTo(-34, shoulderY + 6);
+    ctx.quadraticCurveTo(-44, shoulderY + 18, -32, shoulderY + 28);
+    ctx.moveTo(34, shoulderY + 6);
+    ctx.quadraticCurveTo(44, shoulderY + 18, 32, shoulderY + 28);
+    ctx.stroke();
+
+    // Inner comic shadow + kangaroo pocket
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.beginPath();
+    ctx.moveTo(-22, 24);
+    ctx.lineTo(22, 24);
+    ctx.lineTo(26, 56);
+    ctx.lineTo(-26, 56);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Drawstrings with dark tips
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-10, shoulderY + 4);
+    ctx.quadraticCurveTo(-12, shoulderY + 22, -9, shoulderY + 34);
+    ctx.moveTo(10, shoulderY + 4);
+    ctx.quadraticCurveTo(12, shoulderY + 22, 9, shoulderY + 34);
+    ctx.stroke();
+    ctx.fillStyle = '#1E293B';
+    ctx.fillRect(-12, shoulderY + 33, 6, 7);
+    ctx.fillRect(6, shoulderY + 33, 6, 7);
+
+    // Tattered horror tears if horror-mystery mode
+    if (isHorror) {
+      ctx.fillStyle = '#450A0A';
+      ctx.beginPath();
+      ctx.moveTo(-18, hipY + 4);
+      ctx.lineTo(-10, hipY - 12);
+      ctx.lineTo(-2, hipY + 6);
+      ctx.lineTo(8, hipY - 8);
+      ctx.lineTo(18, hipY + 5);
+      ctx.fill();
+    }
+  } else if (outfit === 'suit') {
+    ctx.fillStyle = character.outfitColor;
+    drawRoundedRect(ctx, -34, shoulderY, 68, hipY - shoulderY + 8, 12);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.moveTo(-15, shoulderY);
+    ctx.lineTo(15, shoulderY);
+    ctx.lineTo(0, shoulderY + 38);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
     ctx.fillStyle = character.accentColor;
     ctx.beginPath();
     ctx.moveTo(-5, shoulderY + 4);
     ctx.lineTo(5, shoulderY + 4);
-    ctx.lineTo(8, shoulderY + 42);
-    ctx.lineTo(0, shoulderY + 54);
-    ctx.lineTo(-8, shoulderY + 42);
+    ctx.lineTo(8, shoulderY + 44);
+    ctx.lineTo(0, shoulderY + 56);
+    ctx.lineTo(-8, shoulderY + 44);
     ctx.closePath();
     ctx.fill();
+    ctx.stroke();
   } else if (outfit === 'labcoat') {
     ctx.fillStyle = '#F8FAFC';
-    drawRoundedRect(ctx, -34, shoulderY, 68, hipY - shoulderY + 14, 12);
+    drawRoundedRect(ctx, -36, shoulderY, 72, hipY - shoulderY + 14, 12);
     ctx.fill();
-    ctx.strokeStyle = '#1E293B';
     ctx.stroke();
-    // Inner colored shirt
     ctx.fillStyle = character.outfitColor;
     ctx.beginPath();
-    ctx.moveTo(-12, shoulderY);
-    ctx.lineTo(12, shoulderY);
-    ctx.lineTo(0, shoulderY + 38);
+    ctx.moveTo(-13, shoulderY);
+    ctx.lineTo(13, shoulderY);
+    ctx.lineTo(0, shoulderY + 40);
     ctx.closePath();
     ctx.fill();
-    // Pocket & pen
-    ctx.strokeStyle = '#64748B';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(10, 12, 16, 18);
-    ctx.strokeStyle = character.accentColor;
-    ctx.beginPath();
-    ctx.moveTo(16, 12);
-    ctx.lineTo(16, 4);
-    ctx.stroke();
+    ctx.strokeRect(10, 14, 17, 20);
   } else if (outfit === 'streetjacket') {
     ctx.fillStyle = character.outfitColor;
-    drawRoundedRect(ctx, -34, shoulderY, 68, hipY - shoulderY + 6, 14);
+    drawRoundedRect(ctx, -36, shoulderY, 72, hipY - shoulderY + 8, 14);
     ctx.fill();
     ctx.stroke();
-    // Bold racing stripe + zipper
     ctx.fillStyle = character.accentColor;
-    ctx.fillRect(-32, shoulderY + 18, 64, 12);
+    ctx.fillRect(-34, shoulderY + 20, 68, 13);
     ctx.strokeStyle = '#FFFFFF';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
     ctx.moveTo(0, shoulderY + 2);
-    ctx.lineTo(0, hipY + 4);
+    ctx.lineTo(0, hipY + 6);
     ctx.stroke();
   } else if (outfit === 'detective') {
     ctx.fillStyle = '#C29B61';
-    drawRoundedRect(ctx, -34, shoulderY, 68, hipY - shoulderY + 16, 10);
+    drawRoundedRect(ctx, -36, shoulderY, 72, hipY - shoulderY + 16, 10);
     ctx.fill();
     ctx.stroke();
-    // Trench collar & belt
     ctx.fillStyle = '#785A32';
-    ctx.fillRect(-34, 24, 68, 9);
+    ctx.fillRect(-36, 26, 72, 10);
     ctx.fillStyle = character.accentColor;
-    ctx.fillRect(-7, 22, 14, 13);
+    ctx.fillRect(-8, 24, 16, 14);
   } else {
-    // T-shirt
     ctx.fillStyle = character.outfitColor;
-    drawRoundedRect(ctx, -28, shoulderY, 56, hipY - shoulderY + 4, 12);
+    drawRoundedRect(ctx, -30, shoulderY, 60, hipY - shoulderY + 6, 12);
     ctx.fill();
     ctx.stroke();
-    // Chest emblem
     ctx.fillStyle = character.accentColor;
     ctx.beginPath();
-    ctx.arc(0, shoulderY + 30, 10, 0, Math.PI * 2);
+    ctx.arc(0, shoulderY + 32, 11, 0, Math.PI * 2);
     ctx.fill();
+    ctx.stroke();
   }
   ctx.restore();
 
-  // Head
-  const headY = -74;
-  const headR = 44;
-  ctx.fillStyle = '#FFFFFF';
-  ctx.strokeStyle = strokeColor === '#F8FAFC' ? '#0F172A' : strokeColor;
-  ctx.lineWidth = inkWidth;
+  // Oversized Expressive Comic Head (matching both reference images!)
+  const headY = -78;
+  const headR = 52;
+
+  // Head base fill + subtle comic crescent shading
+  ctx.fillStyle = isHorror ? '#D6D3D1' : '#FAFAFA';
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = inkWidth + 0.5;
   ctx.beginPath();
   ctx.arc(0, headY, headR, 0, Math.PI * 2);
   ctx.fill();
-  ctx.stroke();
 
-  // Expressive Eyes & Eyebrows
-  const blink = Math.sin(time * 2.1) > 0.96 ? 0.15 : 1;
-  ctx.fillStyle = '#0F172A';
+  // Soft ink shading crescent on bottom-left of head
+  ctx.save();
   ctx.beginPath();
-  ctx.ellipse(-14, headY - 6, 4.5, 6 * blink, 0, 0, Math.PI * 2);
-  ctx.ellipse(14, headY - 6, 4.5, 6 * blink, 0, 0, Math.PI * 2);
+  ctx.arc(0, headY, headR - 2, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = isHorror ? 'rgba(69,10,10,0.18)' : 'rgba(15,23,42,0.10)';
+  ctx.beginPath();
+  ctx.arc(-14, headY + 14, headR + 4, 0, Math.PI * 2);
   ctx.fill();
 
-  // Eyebrows based on emotion
-  ctx.strokeStyle = '#0F172A';
+  if (isHorror) {
+    // Comic cracks & dark zombie bruise patches (matching 2nd reference image)
+    ctx.fillStyle = '#991B1B';
+    ctx.beginPath();
+    ctx.ellipse(-26, headY - 26, 13, 9, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#1C1917';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(16, headY - 46);
+    ctx.lineTo(10, headY - 28);
+    ctx.lineTo(22, headY - 20);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Re-stroke head outline crisply
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = inkWidth + 0.5;
+  ctx.beginPath();
+  ctx.arc(0, headY, headR, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // HUGE Expressive Cartoony Eyes (matching reference images!)
+  const blink = Math.sin(time * 2.1) > 0.96 ? 0.14 : 1;
+  const eyeOffsetY = headY - 4;
+  const leftEyeX = -19;
+  const rightEyeX = 20;
+  const eyeRadius = 17.5;
+
+  // Eye sockets soft shadow
+  ctx.fillStyle = isHorror ? 'rgba(69,10,10,0.32)' : 'rgba(15,23,42,0.14)';
+  ctx.beginPath();
+  ctx.ellipse(leftEyeX, eyeOffsetY + 2, eyeRadius + 3, (eyeRadius + 3) * blink, 0, 0, Math.PI * 2);
+  ctx.ellipse(rightEyeX, eyeOffsetY + 2, eyeRadius + 2, (eyeRadius + 2) * blink, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // White eyeballs with thick ink rim
+  ctx.fillStyle = '#FFFFFF';
+  ctx.strokeStyle = ink;
   ctx.lineWidth = 3.2;
   ctx.beginPath();
-  if (emotion === 'serious') {
-    ctx.moveTo(-24, headY - 22);
-    ctx.lineTo(-7, headY - 16);
-    ctx.moveTo(24, headY - 22);
-    ctx.lineTo(7, headY - 16);
+  ctx.ellipse(leftEyeX, eyeOffsetY, eyeRadius, eyeRadius * blink, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(rightEyeX, eyeOffsetY, eyeRadius - 1, (eyeRadius - 1) * blink, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Pupils + crisp white catchlight (looking toward prop or viewer)
+  if (blink > 0.3) {
+    const lookX = pose === 'thinking' ? 4 : pose === 'presenting' ? 5 : 2;
+    const lookY = pose === 'thinking' ? -4 : 0;
+    ctx.fillStyle = '#090D16';
+    const pupilR = isHorror ? 4 : 7.5;
+    ctx.beginPath();
+    ctx.arc(leftEyeX + lookX, eyeOffsetY + lookY, pupilR, 0, Math.PI * 2);
+    ctx.arc(rightEyeX + lookX, eyeOffsetY + lookY, pupilR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Specular highlight dot
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.arc(leftEyeX + lookX + 2.5, eyeOffsetY + lookY - 2.5, 2.3, 0, Math.PI * 2);
+    ctx.arc(rightEyeX + lookX + 2.5, eyeOffsetY + lookY - 2.5, 2.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Thick Expressive Comic Eyebrows
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  if (emotion === 'serious' || isHorror) {
+    ctx.moveTo(-34, headY - 30);
+    ctx.lineTo(-9, headY - 22);
+    ctx.moveTo(35, headY - 30);
+    ctx.lineTo(10, headY - 22);
   } else if (emotion === 'shocked' || emotion === 'curious') {
-    ctx.moveTo(-24, headY - 22);
-    ctx.quadraticCurveTo(-14, headY - 30, -6, headY - 22);
-    ctx.moveTo(6, headY - 22);
-    ctx.quadraticCurveTo(14, headY - 30, 24, headY - 22);
+    ctx.moveTo(-34, headY - 32);
+    ctx.quadraticCurveTo(-19, headY - 42, -7, headY - 30);
+    ctx.moveTo(8, headY - 30);
+    ctx.quadraticCurveTo(20, headY - 42, 35, headY - 32);
   } else {
-    ctx.moveTo(-22, headY - 20);
-    ctx.lineTo(-8, headY - 22);
-    ctx.moveTo(8, headY - 22);
-    ctx.lineTo(22, headY - 20);
+    ctx.moveTo(-32, headY - 28);
+    ctx.quadraticCurveTo(-19, headY - 36, -8, headY - 28);
+    ctx.moveTo(9, headY - 28);
+    ctx.quadraticCurveTo(20, headY - 36, 33, headY - 28);
   }
   ctx.stroke();
 
-  // Lip-synced Mouth
+  // Lip-synced Expressive Comic Mouth
   const mouthOpen = isTalking ? 4 + Math.abs(Math.sin(time * 18)) * 9 : 0;
-  ctx.strokeStyle = '#0F172A';
-  ctx.fillStyle = '#EF4444';
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 3.5;
 
-  if (emotion === 'shocked') {
+  if (emotion === 'shocked' || isHorror) {
+    ctx.fillStyle = '#1C1917';
     ctx.beginPath();
-    ctx.ellipse(0, headY + 18, 9, 11 + mouthOpen * 0.3, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#0F172A';
+    ctx.ellipse(0, headY + 26, 12, 10 + mouthOpen * 0.3, 0, 0, Math.PI * 2);
     ctx.fill();
+    ctx.stroke();
+    // Teeth / tongue detail
+    ctx.fillStyle = '#F8FAFC';
+    ctx.fillRect(-7, headY + 17, 5, 4);
+    ctx.fillRect(2, headY + 17, 5, 4);
   } else if (isTalking && mouthOpen > 4.5) {
+    ctx.fillStyle = '#111827';
     ctx.beginPath();
-    ctx.ellipse(0, headY + 16, 12, mouthOpen, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#0F172A';
+    ctx.ellipse(0, headY + 24, 13, mouthOpen * 0.9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#EF4444';
+    ctx.beginPath();
+    ctx.ellipse(0, headY + 24 + mouthOpen * 0.4, 7, 3, 0, 0, Math.PI * 2);
     ctx.fill();
   } else if (emotion === 'happy' || emotion === 'excited') {
     ctx.beginPath();
-    ctx.arc(0, headY + 10, 14, 0.2, Math.PI - 0.2);
+    ctx.arc(0, headY + 18, 15, 0.2, Math.PI - 0.2);
     ctx.stroke();
   } else if (emotion === 'serious') {
     ctx.beginPath();
-    ctx.moveTo(-12, headY + 18);
-    ctx.lineTo(12, headY + 18);
+    ctx.moveTo(-13, headY + 26);
+    ctx.lineTo(13, headY + 26);
     ctx.stroke();
   } else {
     ctx.beginPath();
-    ctx.moveTo(-11, headY + 16);
-    ctx.quadraticCurveTo(0, headY + 23, 12, headY + 15);
+    ctx.moveTo(-12, headY + 24);
+    ctx.quadraticCurveTo(0, headY + 30, 12, headY + 23);
     ctx.stroke();
   }
 
   // Eyewear
   if (character.eyewear === 'glasses') {
-    ctx.strokeStyle = '#0F172A';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(-28, headY - 15, 22, 16);
-    ctx.strokeRect(6, headY - 15, 22, 16);
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 3.5;
+    ctx.strokeRect(leftEyeX - 18, eyeOffsetY - 16, 36, 32);
+    ctx.strokeRect(rightEyeX - 17, eyeOffsetY - 16, 35, 32);
     ctx.beginPath();
-    ctx.moveTo(-6, headY - 8);
-    ctx.lineTo(6, headY - 8);
+    ctx.moveTo(leftEyeX + 18, eyeOffsetY - 2);
+    ctx.lineTo(rightEyeX - 17, eyeOffsetY - 2);
     ctx.stroke();
   } else if (character.eyewear === 'sunglasses') {
-    ctx.fillStyle = '#0F172A';
-    drawRoundedRect(ctx, -31, headY - 16, 26, 18, 4);
+    ctx.fillStyle = '#090D16';
+    drawRoundedRect(ctx, leftEyeX - 19, eyeOffsetY - 15, 38, 28, 6);
     ctx.fill();
-    drawRoundedRect(ctx, 5, headY - 16, 26, 18, 4);
+    drawRoundedRect(ctx, rightEyeX - 18, eyeOffsetY - 15, 37, 28, 6);
     ctx.fill();
-    ctx.strokeStyle = '#0F172A';
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#090D16';
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(-5, headY - 9);
-    ctx.lineTo(5, headY - 9);
+    ctx.moveTo(leftEyeX + 19, eyeOffsetY - 4);
+    ctx.lineTo(rightEyeX - 18, eyeOffsetY - 4);
     ctx.stroke();
   } else if (character.eyewear === 'monocle') {
     ctx.strokeStyle = '#F59E0B';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 3.5;
     ctx.beginPath();
-    ctx.arc(14, headY - 6, 12, 0, Math.PI * 2);
+    ctx.arc(rightEyeX, eyeOffsetY, 19, 0, Math.PI * 2);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(26, headY - 4);
-    ctx.lineTo(30, headY + 28);
+    ctx.moveTo(rightEyeX + 19, eyeOffsetY);
+    ctx.lineTo(rightEyeX + 24, headY + 34);
     ctx.stroke();
   }
 
   // Headwear
   if (character.headwear === 'headphones') {
     ctx.strokeStyle = character.accentColor;
-    ctx.lineWidth = 7;
+    ctx.lineWidth = 8;
     ctx.beginPath();
-    ctx.arc(0, headY - 4, headR + 4, Math.PI + 0.15, -0.15);
+    ctx.arc(0, headY - 4, headR + 5, Math.PI + 0.15, -0.15);
     ctx.stroke();
     ctx.fillStyle = '#1E293B';
-    drawRoundedRect(ctx, -headR - 10, headY - 18, 14, 30, 6);
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 3;
+    drawRoundedRect(ctx, -headR - 11, headY - 18, 16, 34, 7);
     ctx.fill();
-    drawRoundedRect(ctx, headR - 4, headY - 18, 14, 30, 6);
+    ctx.stroke();
+    drawRoundedRect(ctx, headR - 5, headY - 18, 16, 34, 7);
     ctx.fill();
+    ctx.stroke();
   } else if (character.headwear === 'cap') {
     ctx.fillStyle = character.outfitColor;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 3.5;
     ctx.beginPath();
-    ctx.arc(0, headY - 14, headR + 2, Math.PI, 0);
+    ctx.arc(0, headY - 18, headR + 2, Math.PI, 0);
     ctx.fill();
-    ctx.fillRect(-10, headY - 22, 62, 10);
+    ctx.stroke();
+    ctx.fillRect(-10, headY - 26, 70, 12);
+    ctx.strokeRect(-10, headY - 26, 70, 12);
   } else if (character.headwear === 'crown') {
     ctx.fillStyle = '#FACC15';
-    ctx.strokeStyle = '#0F172A';
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(-26, headY - 38);
-    ctx.lineTo(-22, headY - 66);
-    ctx.lineTo(-8, headY - 50);
-    ctx.lineTo(0, headY - 72);
-    ctx.lineTo(8, headY - 50);
-    ctx.lineTo(22, headY - 66);
-    ctx.lineTo(26, headY - 38);
+    ctx.moveTo(-28, headY - 46);
+    ctx.lineTo(-24, headY - 76);
+    ctx.lineTo(-8, headY - 58);
+    ctx.lineTo(0, headY - 82);
+    ctx.lineTo(8, headY - 58);
+    ctx.lineTo(24, headY - 76);
+    ctx.lineTo(28, headY - 46);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
   } else if (character.headwear === 'beanie') {
     ctx.fillStyle = character.accentColor;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 3.5;
     ctx.beginPath();
-    ctx.arc(0, headY - 14, headR + 1, Math.PI, 0);
+    ctx.arc(0, headY - 18, headR + 1, Math.PI, 0);
     ctx.fill();
-    drawRoundedRect(ctx, -headR - 2, headY - 24, headR * 2 + 4, 14, 7);
+    ctx.stroke();
+    drawRoundedRect(ctx, -headR - 2, headY - 28, headR * 2 + 4, 15, 7);
     ctx.fill();
+    ctx.stroke();
   } else if (character.headwear === 'tophat') {
     ctx.fillStyle = '#111827';
-    ctx.fillRect(-46, headY - 38, 92, 9);
-    drawRoundedRect(ctx, -28, headY - 82, 56, 46, 4);
+    ctx.fillRect(-52, headY - 46, 104, 10);
+    drawRoundedRect(ctx, -32, headY - 94, 64, 50, 4);
     ctx.fill();
     ctx.fillStyle = character.outfitColor;
-    ctx.fillRect(-28, headY - 46, 56, 8);
+    ctx.fillRect(-32, headY - 54, 64, 8);
   }
 
+  // Silence unused lint on limbStroke
+  void limbStroke;
+  ctx.restore();
+}
+
+function drawOutroSubscribeCard(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  localProgress: number,
+  outfitColor: string,
+  time: number
+) {
+  const pop = easeOutBack(clampNumber(localProgress / 0.35, 0, 1));
+  if (pop <= 0.05) return;
+
+  ctx.save();
+  const cardX = width * 0.72;
+  const cardY = height * 0.74;
+  ctx.translate(cardX, cardY);
+  ctx.scale(pop, pop);
+
+  const pulse = 1 + Math.sin(time * 8) * 0.035;
+  ctx.scale(pulse, pulse);
+
+  ctx.fillStyle = '#DC2626';
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 3;
+  drawRoundedRect(ctx, -135, -30, 270, 56, 14);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '800 22px "Lalezar", "Rubik", "Vazirmatn", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('LIKE  ·  SUBSCRIBE  ▶', 0, 0);
+
+  // Small next-video arrow badge
+  ctx.fillStyle = outfitColor;
+  ctx.beginPath();
+  ctx.arc(135, -24, 14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '900 16px sans-serif';
+  ctx.fillText('🔔', 135, -23);
   ctx.restore();
 }
 
@@ -914,18 +1303,18 @@ function drawKineticTypography(
   palette: ThemePalette,
   accentColor: string,
   outfitColor: string,
-  localProgress: number
+  localProgress: number,
+  isPlaying: boolean
 ) {
   const headline = scene.headline.trim();
   const narration = scene.narration.trim();
 
-  // 1. Bold Kinetic Headline (cleanly positioned in upper-right safe zone)
   if (headline) {
     const tokens = splitWordTokens(headline, scene.highlightWord);
     const rtl = isRtlText(headline);
-    const fontSize = Math.round(width * 0.032);
+    const fontSize = Math.round(width * 0.034);
     ctx.save();
-    ctx.font = `800 ${fontSize}px "Vazirmatn", "Bricolage Grotesque", sans-serif`;
+    ctx.font = `800 ${fontSize}px "Lalezar", "Rubik", "Vazirmatn", "Bricolage Grotesque", sans-serif`;
     ctx.textBaseline = 'middle';
 
     const zoneLeft = width * 0.48;
@@ -935,9 +1324,8 @@ function drawKineticTypography(
     const spaceW = fontSize * 0.42;
 
     const getTokenWidth = (tok: (typeof tokens)[number]) =>
-      ctx.measureText(tok.text).width + (tok.isHighlight ? 26 : 6);
+      ctx.measureText(tok.text).width + (tok.isHighlight ? 28 : 8);
 
-    // Wrap tokens cleanly into lines
     const lines: (typeof tokens)[] = [];
     let currentLine: typeof tokens = [];
     let currentW = 0;
@@ -956,16 +1344,17 @@ function drawKineticTypography(
     if (currentLine.length > 0) lines.push(currentLine);
 
     lines.forEach((lineTokens, lineIdx) => {
-      const lineY = boxY + lineIdx * (fontSize * 1.55);
+      const lineY = boxY + lineIdx * (fontSize * 1.5);
 
       if (rtl) {
-        // Draw right-to-left starting cleanly from zoneRight
         let cursorRight = zoneRight;
         lineTokens.forEach((tok) => {
           const w = getTokenWidth(tok);
           const centerX = cursorRight - w / 2;
-          const delay = tok.staggerIndex * 0.055;
-          const pop = easeOutBack(clampNumber((localProgress - delay) / 0.24, 0, 1));
+          const delay = tok.staggerIndex * 0.05;
+          const pop = !isPlaying && localProgress < 0.02
+            ? 1
+            : easeOutBack(clampNumber((localProgress - delay) / 0.22, 0, 1));
 
           ctx.save();
           ctx.translate(centerX, lineY);
@@ -974,11 +1363,16 @@ function drawKineticTypography(
 
           if (tok.isHighlight) {
             ctx.fillStyle = outfitColor;
-            drawRoundedRect(ctx, -w / 2, -fontSize * 0.64, w, fontSize * 1.28, 11);
+            ctx.strokeStyle = '#111827';
+            ctx.lineWidth = 3;
+            drawRoundedRect(ctx, -w / 2, -fontSize * 0.64, w, fontSize * 1.28, 12);
             ctx.fill();
+            ctx.stroke();
             ctx.fillStyle = '#FFFFFF';
           } else {
             ctx.fillStyle = palette.textColor;
+            ctx.shadowColor = 'rgba(0,0,0,0.45)';
+            ctx.shadowBlur = 8;
           }
 
           ctx.textAlign = 'center';
@@ -988,13 +1382,14 @@ function drawKineticTypography(
           cursorRight -= w + spaceW;
         });
       } else {
-        // Draw left-to-right starting cleanly from zoneLeft
         let cursorLeft = zoneLeft;
         lineTokens.forEach((tok) => {
           const w = getTokenWidth(tok);
           const centerX = cursorLeft + w / 2;
-          const delay = tok.staggerIndex * 0.055;
-          const pop = easeOutBack(clampNumber((localProgress - delay) / 0.24, 0, 1));
+          const delay = tok.staggerIndex * 0.05;
+          const pop = !isPlaying && localProgress < 0.02
+            ? 1
+            : easeOutBack(clampNumber((localProgress - delay) / 0.22, 0, 1));
 
           ctx.save();
           ctx.translate(centerX, lineY);
@@ -1003,11 +1398,16 @@ function drawKineticTypography(
 
           if (tok.isHighlight) {
             ctx.fillStyle = outfitColor;
-            drawRoundedRect(ctx, -w / 2, -fontSize * 0.64, w, fontSize * 1.28, 11);
+            ctx.strokeStyle = '#111827';
+            ctx.lineWidth = 3;
+            drawRoundedRect(ctx, -w / 2, -fontSize * 0.64, w, fontSize * 1.28, 12);
             ctx.fill();
+            ctx.stroke();
             ctx.fillStyle = '#FFFFFF';
           } else {
             ctx.fillStyle = palette.textColor;
+            ctx.shadowColor = 'rgba(0,0,0,0.45)';
+            ctx.shadowBlur = 8;
           }
 
           ctx.textAlign = 'center';
@@ -1022,22 +1422,22 @@ function drawKineticTypography(
     ctx.restore();
   }
 
-  // 2. Clean YouTube Bottom Subtitle Pill/Bar
+  // Clean YouTube Bottom Subtitle Bar
   if (narration) {
     const subFontSize = Math.round(width * 0.021);
     ctx.save();
-    ctx.font = `600 ${subFontSize}px "Vazirmatn", "Plus Jakarta Sans", sans-serif`;
+    ctx.font = `700 ${subFontSize}px "Vazirmatn", "Plus Jakarta Sans", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    const maxSubW = width * 0.82;
-    const textW = Math.min(maxSubW, ctx.measureText(narration).width + 48);
+    const maxSubW = width * 0.84;
+    const textW = Math.min(maxSubW, ctx.measureText(narration).width + 52);
     const barH = subFontSize * 2.15;
-    const barY = height - barH - 24;
+    const barY = height - barH - 22;
 
-    ctx.fillStyle = 'rgba(8, 10, 16, 0.86)';
+    ctx.fillStyle = 'rgba(8, 10, 16, 0.88)';
     ctx.strokeStyle = accentColor;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.5;
     drawRoundedRect(ctx, width / 2 - textW / 2, barY, textW, barH, 14);
     ctx.fill();
     ctx.stroke();
@@ -1078,11 +1478,13 @@ export function renderStickmanSceneFrame(params: RenderFrameParams) {
   } = params;
 
   const palette = getThemePalette(theme);
+  const effectiveTransitionProgress =
+    !isPlaying && localProgress < 0.02 ? 1 : transitionProgress;
   const cam = computeCameraTransform(
     scene.camera,
     localProgress,
     scene.transition,
-    transitionProgress,
+    effectiveTransitionProgress,
     localTime
   );
 
@@ -1095,10 +1497,10 @@ export function renderStickmanSceneFrame(params: RenderFrameParams) {
   ctx.scale(cam.scale, cam.scale);
   ctx.translate(-width / 2, -height / 2);
 
-  // 1. Background & Grid
+  // 1. Background & Sketchy Comic Perspective
   drawBackground(ctx, width, height, palette, character.accentColor, globalTime);
 
-  // 2. Motion Graphics Layer
+  // 2. Motion Graphics Layer & Action Speed Lines
   drawMotionGraphicLayer(
     ctx,
     width,
@@ -1110,12 +1512,17 @@ export function renderStickmanSceneFrame(params: RenderFrameParams) {
     localProgress,
     globalTime
   );
+  if (effectiveTransitionProgress < 1) {
+    drawComicSpeedLines(ctx, width, height, character.accentColor, 1 - effectiveTransitionProgress, globalTime);
+  }
 
-  // 3. Prop / Custom Gemini Vector SVG Illustration (cleanly positioned below headline)
-  const propPop = easeOutBack(clampNumber(localProgress / 0.28, 0, 1));
+  // 3. Prop / Custom Gemini Vector SVG Illustration
+  const propPop = !isPlaying && localProgress < 0.02
+    ? 1
+    : easeOutBack(clampNumber(localProgress / 0.28, 0, 1));
   const svgImg = getCachedSvgImage(scene.customSvgArtwork);
   const propX = width * 0.72;
-  const propY = height * 0.60;
+  const propY = scene.sceneRole === 'cta-outro' ? height * 0.45 : height * 0.57;
   const propScale = (width / 1280) * propPop;
 
   if (svgImg) {
@@ -1124,8 +1531,8 @@ export function renderStickmanSceneFrame(params: RenderFrameParams) {
     ctx.translate(propX, propY + bob);
     ctx.scale(propScale, propScale);
     ctx.fillStyle = palette.cardSurface;
-    ctx.strokeStyle = character.accentColor;
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 6;
     drawRoundedRect(ctx, -110, -110, 220, 220, 28);
     ctx.fill();
     ctx.stroke();
@@ -1137,7 +1544,7 @@ export function renderStickmanSceneFrame(params: RenderFrameParams) {
       scene.propKeyword,
       propX,
       propY,
-      propScale * 1.15,
+      propScale * 1.12,
       character.accentColor,
       character.outfitColor,
       palette,
@@ -1145,11 +1552,11 @@ export function renderStickmanSceneFrame(params: RenderFrameParams) {
     );
   }
 
-  // 4. Expressive Stickman Character with Custom Outfit
-  const charScale = (width / 1280) * 1.38;
+  // 4. Expressive Comic-Style Stickman Character
+  const charScale = (width / 1280) * 1.18;
   drawStickmanCharacter(ctx, {
-    x: width * 0.31,
-    y: height * 0.56,
+    x: width * 0.30,
+    y: height * 0.495,
     scale: charScale,
     character,
     outfit: scene.outfitOverride ?? character.outfit,
@@ -1160,9 +1567,25 @@ export function renderStickmanSceneFrame(params: RenderFrameParams) {
     isTalking: isPlaying || localTime > 0,
   });
 
+  // 5. Floating Comic Thought Bubble next to character head
+  if (scene.thoughtBubble) {
+    const bubblePop = !isPlaying && localProgress < 0.02
+      ? 1
+      : easeOutBack(clampNumber((localProgress - 0.08) / 0.25, 0, 1));
+    drawThoughtBubble(
+      ctx,
+      width * 0.42,
+      height * 0.265,
+      scene.thoughtBubble,
+      character.outfitColor,
+      bubblePop * (width / 1280),
+      globalTime
+    );
+  }
+
   ctx.restore();
 
-  // 5. Crisp Screen-Space Kinetic Typography & Subtitles
+  // 6. Crisp Screen-Space Kinetic Typography & Subtitles
   drawKineticTypography(
     ctx,
     width,
@@ -1171,10 +1594,43 @@ export function renderStickmanSceneFrame(params: RenderFrameParams) {
     palette,
     character.accentColor,
     character.outfitColor,
-    localProgress
+    localProgress,
+    isPlaying
   );
 
-  // 6. Fast Transition Overlay (Flash Cut / Ink Wipe)
+  // 7. Animated Subscribe / Like End-Card on Final CTA Outro
+  if (scene.sceneRole === 'cta-outro') {
+    const ctaProgress =
+      !isPlaying && localProgress < 0.02
+        ? 1
+        : clampNumber((localProgress - 0.20) / 0.75, 0, 1);
+    drawOutroSubscribeCard(
+      ctx,
+      width,
+      height,
+      ctaProgress,
+      character.outfitColor,
+      globalTime
+    );
+  }
+
+  // 8. Subtle Cinematic Vignette
+  ctx.save();
+  const vig = ctx.createRadialGradient(
+    width * 0.5,
+    height * 0.5,
+    width * 0.35,
+    width * 0.5,
+    height * 0.5,
+    width * 0.72
+  );
+  vig.addColorStop(0, 'rgba(0,0,0,0)');
+  vig.addColorStop(1, 'rgba(0,0,0,0.32)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, width, height);
+  ctx.restore();
+
+  // 9. Fast Transition Overlay (Flash Cut / Ink Wipe)
   if (cam.flashOpacity > 0.01) {
     ctx.save();
     ctx.fillStyle = `rgba(255, 255, 255, ${cam.flashOpacity})`;
@@ -1182,9 +1638,9 @@ export function renderStickmanSceneFrame(params: RenderFrameParams) {
     ctx.restore();
   }
 
-  if (scene.transition === 'ink-wipe' && transitionProgress < 1) {
+  if (scene.transition === 'ink-wipe' && effectiveTransitionProgress < 1) {
     ctx.save();
-    const wipeW = width * (1 - easeOutExpo(transitionProgress));
+    const wipeW = width * (1 - easeOutExpo(effectiveTransitionProgress));
     ctx.fillStyle = character.outfitColor;
     ctx.fillRect(0, 0, wipeW, height);
     ctx.restore();

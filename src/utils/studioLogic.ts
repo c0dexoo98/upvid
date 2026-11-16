@@ -11,14 +11,15 @@ import type {
 
 export const DEFAULT_CHARACTER: CharacterConfig = {
   name: 'Alex Stick',
+  styleMode: 'comic-classic',
   outfit: 'hoodie',
-  outfitColor: '#F97316',
+  outfitColor: '#DC2626',
   accentColor: '#38BDF8',
-  lineColor: '#F8FAFC',
-  headwear: 'headphones',
+  lineColor: '#111827',
+  headwear: 'none',
   eyewear: 'none',
   lineThickness: 5,
-  customNotes: 'Fast-paced YouTube explainer narrator, expressive hands, bold silhouette',
+  customNotes: 'Expressive comic-ink stickman with detailed hoodie, big eyes, sketchy street backdrop',
 };
 
 export function clampNumber(value: number, min: number, max: number): number {
@@ -171,7 +172,6 @@ export function findActiveSceneAtTime(
   const localTime = clampNumber(safeTime - scene.startTime, 0, duration);
   const localProgress = clampNumber(localTime / duration, 0, 1);
 
-  // Fast YouTube transition window in the first 0.28s of a scene
   const transitionWindow = Math.min(0.28, duration * 0.25);
   const transitionProgress =
     localTime < transitionWindow
@@ -230,7 +230,6 @@ export function computeCameraTransform(
   let flashOpacity = 0;
   const wipeProgress = tp;
 
-  // Base camera animation across the scene
   switch (camera) {
     case 'zoom-in':
       scale = 1 + 0.18 * easeInOutCubic(p);
@@ -265,7 +264,6 @@ export function computeCameraTransform(
       break;
   }
 
-  // Fast YouTube transition entry impulse
   if (tp < 1) {
     const inv = 1 - tp;
     switch (transition) {
@@ -274,8 +272,8 @@ export function computeCameraTransform(
         rotationRad += inv * -0.04;
         break;
       case 'zoom-burst':
-        scale *= 1 + inv * 0.55;
-        flashOpacity = inv * 0.35;
+        scale *= 1 + inv * 0.26;
+        flashOpacity = inv * 0.28;
         break;
       case 'flash-cut':
         flashOpacity = inv * 0.75;
@@ -335,7 +333,6 @@ export function sanitizeSvgMarkup(rawSvg: string | undefined): string | null {
   if (!rawSvg || typeof rawSvg !== 'string') return null;
   const trimmed = rawSvg.trim();
   if (!trimmed.startsWith('<svg')) return null;
-  // Strip potentially unsafe script/foreignObject/event handlers
   const cleaned = trimmed
     .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
     .replace(/<foreignObject[\s\S]*?>[\s\S]*?<\/foreignObject>/gi, '')
@@ -353,11 +350,13 @@ export function createSampleYouTubeScenes(language: 'fa' | 'en'): SceneItem[] {
         index: 0,
         startTime: 0,
         endTime: 3.0,
-        narration: 'چرا ۹۰ درصد کانال‌های یوتیوب توی ۶ ماه اول متوقف میشن؟',
+        narration: 'چرا ۹۰ درصد کانال‌های یوتیوب قبل از ۱۰۰۰ سابسکرایب متوقف میشن؟',
         headline: 'راز شکست ۹۰٪ کانال‌ها',
         highlightWord: '۹۰٪',
-        pose: 'shocked',
-        emotion: 'shocked',
+        thoughtBubble: '؟',
+        sceneRole: 'hook',
+        pose: 'thinking',
+        emotion: 'curious',
         camera: 'dolly-punch',
         transition: 'zoom-burst',
         motionGraphic: 'lightning-pop',
@@ -371,9 +370,11 @@ export function createSampleYouTubeScenes(language: 'fa' | 'en'): SceneItem[] {
         index: 1,
         startTime: 3.0,
         endTime: 6.2,
-        narration: 'مشکل از الگوریتم نیست؛ مشکل اینه که ریتم تدوین و هوک ۳ ثانیه اول ضعیفه!',
-        headline: 'قانون طلایی ۳ ثانیه اول',
-        highlightWord: '۳ ثانیه',
+        narration: 'صبر کن! مشکل الگوریتم نیست؛ راز اصلی توی ۳ ثانیه اول قایم شده!',
+        headline: 'قانون طلایی ۳ ثانیه',
+        highlightWord: '۳',
+        thoughtBubble: '!',
+        sceneRole: 'mini-hook',
         pose: 'pointing-up',
         emotion: 'serious',
         camera: 'zoom-in',
@@ -388,10 +389,12 @@ export function createSampleYouTubeScenes(language: 'fa' | 'en'): SceneItem[] {
         id: 'scene-3',
         index: 2,
         startTime: 6.2,
-        endTime: 9.5,
-        narration: 'وقتی هر ۳ ثانیه زاویه دوربین عوض بشه و زوم‌این و موشن‌گرافیک بیاد، مغز بیننده قفل میشه.',
-        headline: 'زوم سریع و موشن گرافیک',
-        highlightWord: 'موشن گرافیک',
+        endTime: 9.6,
+        narration: 'وقتی هر ۳ ثانیه زوم و موشن‌گرافیک کمیک میاد، مغز بیننده تا آخر قفل میشه!',
+        headline: 'موشن گرافیک و ریتم سریع',
+        highlightWord: 'موشن',
+        thoughtBubble: '⚡',
+        sceneRole: 'story',
         pose: 'presenting',
         emotion: 'excited',
         camera: 'zoom-out',
@@ -405,11 +408,13 @@ export function createSampleYouTubeScenes(language: 'fa' | 'en'): SceneItem[] {
       {
         id: 'scene-4',
         index: 3,
-        startTime: 9.5,
+        startTime: 9.6,
         endTime: 13.0,
-        narration: 'کافیه صدای خودت رو بفرستی تا کاراکتر استیک‌من با لباس دلخواهت ویدیو رو بسازه!',
-        headline: 'تولید خودکار ویدیو استیک‌من',
-        highlightWord: 'استیک‌من',
+        narration: 'اگه این سبک رو دوست داشتی لایک و سابسکرایب یادت نره و ویدیوی بعدی رو ببین!',
+        headline: 'لایک، سابسکرایب و ویدیوی بعدی',
+        highlightWord: 'سابسکرایب',
+        thoughtBubble: '★',
+        sceneRole: 'cta-outro',
         pose: 'celebrating',
         emotion: 'happy',
         camera: 'pan-right',
@@ -432,8 +437,10 @@ export function createSampleYouTubeScenes(language: 'fa' | 'en'): SceneItem[] {
       narration: 'Why do 90 percent of YouTube channels quit before hitting 1,000 subscribers?',
       headline: 'Why 90% Channels Quit',
       highlightWord: '90%',
-      pose: 'shocked',
-      emotion: 'shocked',
+      thoughtBubble: '?',
+      sceneRole: 'hook',
+      pose: 'thinking',
+      emotion: 'curious',
       camera: 'dolly-punch',
       transition: 'zoom-burst',
       motionGraphic: 'lightning-pop',
@@ -447,9 +454,11 @@ export function createSampleYouTubeScenes(language: 'fa' | 'en'): SceneItem[] {
       index: 1,
       startTime: 3.0,
       endTime: 6.2,
-      narration: 'It is never the algorithm—it is losing viewer attention in the first 3 seconds.',
-      headline: 'Win The First 3 Seconds',
-      highlightWord: '3 Seconds',
+      narration: 'Wait—it is never the algorithm. The real secret hides in the first 3 seconds!',
+      headline: 'The 3 Second Secret',
+      highlightWord: '3',
+      thoughtBubble: '!',
+      sceneRole: 'mini-hook',
       pose: 'pointing-up',
       emotion: 'serious',
       camera: 'zoom-in',
@@ -464,10 +473,12 @@ export function createSampleYouTubeScenes(language: 'fa' | 'en'): SceneItem[] {
       id: 'scene-3',
       index: 2,
       startTime: 6.2,
-      endTime: 9.5,
-      narration: 'Rapid cuts, zoom-ins, zoom-outs, and crisp motion graphics keep retention sky-high.',
-      headline: 'Fast Cuts & Motion Graphics',
-      highlightWord: 'Motion Graphics',
+      endTime: 9.6,
+      narration: 'Rapid comic cuts, zoom punches, and bold motion graphics lock viewer retention!',
+      headline: 'Pro Comic Motion FX',
+      highlightWord: 'Motion',
+      thoughtBubble: '⚡',
+      sceneRole: 'story',
       pose: 'presenting',
       emotion: 'excited',
       camera: 'zoom-out',
@@ -481,11 +492,13 @@ export function createSampleYouTubeScenes(language: 'fa' | 'en'): SceneItem[] {
     {
       id: 'scene-4',
       index: 3,
-      startTime: 9.5,
+      startTime: 9.6,
       endTime: 13.0,
-      narration: 'Drop your voiceover, pick your stickman outfit, and download your ready-to-upload video.',
-      headline: 'Build & Download Instantly',
-      highlightWord: 'Download',
+      narration: 'Smash Like, Subscribe right now, and click the next video waiting for you!',
+      headline: 'Like, Subscribe & Watch Next',
+      highlightWord: 'Subscribe',
+      thoughtBubble: '★',
+      sceneRole: 'cta-outro',
       pose: 'celebrating',
       emotion: 'happy',
       camera: 'pan-right',

@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import express from 'express';
-import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -15,7 +14,7 @@ function getGeminiClient(): GoogleGenAI {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error(
-      'GEMINI_API_KEY is not configured. Add it in Settings > Secrets to enable AI transcription and scene directing.'
+      'GEMINI_API_KEY is not configured. Add it in Settings > Secrets to enable AI scriptwriting, TTS voiceover, and scene directing.'
     );
   }
   return new GoogleGenAI({
@@ -28,6 +27,99 @@ function getGeminiClient(): GoogleGenAI {
   });
 }
 
+function estimateWavDurationSeconds(wavBuf: Buffer): number {
+  if (wavBuf.length < 44) return 15;
+  const byteRate = wavBuf.readUInt32LE(28);
+  if (!byteRate || byteRate <= 0) return 15;
+  const dataBytes = Math.max(0, wavBuf.length - 44);
+  return Math.max(4, Number((dataBytes / byteRate).toFixed(2)));
+}
+
+const SCENE_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    startTime: { type: Type.NUMBER },
+    endTime: { type: Type.NUMBER },
+    narration: { type: Type.STRING },
+    headline: { type: Type.STRING },
+    highlightWord: { type: Type.STRING },
+    thoughtBubble: { type: Type.STRING },
+    sceneRole: {
+      type: Type.STRING,
+      enum: ['hook', 'story', 'mini-hook', 'climax', 'cta-outro'],
+    },
+    pose: {
+      type: Type.STRING,
+      enum: [
+        'presenting',
+        'pointing-up',
+        'thinking',
+        'celebrating',
+        'shocked',
+        'typing',
+        'walking',
+        'idea',
+        'facepalm',
+        'chart-up',
+      ],
+    },
+    emotion: {
+      type: Type.STRING,
+      enum: ['happy', 'curious', 'excited', 'serious', 'shocked', 'cool'],
+    },
+    camera: {
+      type: Type.STRING,
+      enum: ['zoom-in', 'zoom-out', 'pan-left', 'pan-right', 'dolly-punch', 'shake', 'static'],
+    },
+    transition: {
+      type: Type.STRING,
+      enum: ['whip-left', 'zoom-burst', 'flash-cut', 'slide-up', 'ink-wipe', 'cut'],
+    },
+    motionGraphic: {
+      type: Type.STRING,
+      enum: [
+        'kinetic-callout',
+        'chart-rise',
+        'spotlight-ring',
+        'arrow-flow',
+        'split-compare',
+        'lightning-pop',
+      ],
+    },
+    propKeyword: {
+      type: Type.STRING,
+      enum: [
+        'rocket',
+        'money',
+        'brain',
+        'laptop',
+        'clock',
+        'trophy',
+        'warning',
+        'youtube',
+        'lightbulb',
+        'chart',
+        'none',
+      ],
+    },
+  },
+  required: [
+    'startTime',
+    'endTime',
+    'narration',
+    'headline',
+    'highlightWord',
+    'thoughtBubble',
+    'sceneRole',
+    'pose',
+    'emotion',
+    'camera',
+    'transition',
+    'motionGraphic',
+    'propKeyword',
+  ],
+};
+
 async function startServer() {
   const app = express();
   app.use(express.json({ limit: '50mb' }));
@@ -36,7 +128,128 @@ async function startServer() {
     res.json({ ok: true, service: 'upvid-studio' });
   });
 
-  // 1. Transcribe uploaded voiceover audio & direct fast-paced YouTube stickman scenes
+  // 1. Topic-only Auto-Pilot: writes viral YouTube script (Hook + Mini-Hooks + Like/Subscribe/Next-Video CTA) + TTS voiceover + Auto-Directed Scenes
+  app.post('/api/generate-from-topic', async (req, res) => {
+    try {
+      const {
+        topic = '',
+        languageHint = 'fa',
+        characterNotes = '',
+        styleMode = 'comic-classic',
+      } = req.body ?? {};
+
+      if (!topic || typeof topic !== 'string' || !topic.trim()) {
+        res.status(400).json({ error: 'Video topic is required.' });
+        return;
+      }
+
+      const ai = getGeminiClient();
+
+      const scriptPrompt = `
+You are an elite YouTube Retention Scriptwriter & Stickman Motion-Graphics Director.
+Write an ultra-engaging, fast-paced YouTube Stickman video script about:
+"${topic.trim()}"
+
+Language: ${languageHint === 'fa' ? 'Persian (Farsi) — conversational, energetic, magnetic YouTube storytelling tone' : 'English — punchy, high-retention YouTube storytelling tone'}
+Visual Style Mode: ${styleMode}
+Character Notes: ${characterNotes || 'Expressive comic-ink stickman'}
+
+Mandatory Structure (6 to 8 fast scenes, ~3 to 4 seconds each):
+1. Scene 1 (sceneRole: "hook"): Explosive 0-3s curiosity hook that stops scrolling immediately.
+2. Scenes 2-5 (mix of "story" and at least 2 "mini-hook" scenes): Escalating value, surprising twists, and mini-hooks (e.g. "اما صبر کن، تازه اولشه..." / "Wait, here is the crazy part...") so viewers stay glued until the end.
+3. Scene N-1 (sceneRole: "climax"): Big payoff / revelation.
+4. Final Scene (sceneRole: "cta-outro"): Warm, high-converting call-to-action urging viewers to Like, Subscribe, and watch the next video!
+
+Return JSON with:
+- fullScript: the complete spoken narration joined smoothly
+- scenes: array of 6-8 fast-cut scenes with varied zooms (zoom-in, zoom-out, dolly-punch, shake), rapid transitions (whip-left, zoom-burst, flash-cut, slide-up, ink-wipe), 1-char thoughtBubble ('؟', '!', '⚡', '★', or ''), and punchy 2-5 word kinetic headlines + highlightWord.
+`;
+
+      const scriptResp = await ai.models.generateContent({
+        model: 'gemini-4-hydrogen',
+        contents: scriptPrompt,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              fullScript: { type: Type.STRING },
+              scenes: {
+                type: Type.ARRAY,
+                items: SCENE_SCHEMA,
+              },
+            },
+            required: ['fullScript', 'scenes'],
+          },
+        },
+      });
+
+      const parsed = JSON.parse((scriptResp.text ?? '{}').trim());
+      const fullScript = String(parsed.fullScript || '').trim();
+      const scenes = Array.isArray(parsed.scenes) ? parsed.scenes : [];
+
+      // Synthesize real spoken WAV voiceover via gemini-3.8-flash-lite-tts
+      let audioBase64: string | null = null;
+      let audioDuration = 0;
+      let ttsWarning: string | null = null;
+
+      if (fullScript) {
+        try {
+          const ttsResp = await ai.models.generateContent({
+            model: 'gemini-3.8-flash-lite-tts',
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  {
+                    text: fullScript,
+                    speechMetadata: {
+                      style: 'Energetic, engaging YouTube stickman storyteller, clear pacing',
+                    },
+                  },
+                ],
+              },
+            ],
+            config: {
+              responseModalities: ['AUDIO'],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName: 'Puck' },
+                },
+              },
+            },
+          });
+
+          const rawAudio =
+            ttsResp.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+          if (rawAudio) {
+            audioBase64 = rawAudio;
+            audioDuration = estimateWavDurationSeconds(Buffer.from(rawAudio, 'base64'));
+          }
+        } catch (ttsErr) {
+          ttsWarning =
+            ttsErr instanceof Error
+              ? ttsErr.message
+              : 'TTS voiceover generation failed.';
+        }
+      }
+
+      res.json({
+        transcript: fullScript,
+        scenes,
+        audioBase64,
+        audioMimeType: audioBase64 ? 'audio/wav' : null,
+        audioDuration,
+        ttsWarning,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to generate video from topic.';
+      res.status(500).json({ error: message });
+    }
+  });
+
+  // 2. Transcribe uploaded voiceover audio & auto-direct fast-paced YouTube stickman scenes
   app.post('/api/analyze-audio', async (req, res) => {
     try {
       const {
@@ -54,7 +267,6 @@ async function startServer() {
 
       const ai = getGeminiClient();
 
-      // Step 1: Transcribe the audio cleanly with gemini-3.5-transcribe
       let transcriptText = '';
       try {
         const transcribeResp = await ai.models.generateContent({
@@ -86,22 +298,20 @@ async function startServer() {
       }
 
       const effectiveDuration = Math.max(4, Number(durationSeconds) || 15);
-      const targetScenesCount = Math.max(3, Math.min(18, Math.round(effectiveDuration / 3.2)));
+      const targetScenesCount = Math.max(4, Math.min(20, Math.round(effectiveDuration / 3.0)));
 
-      // Step 2: Direct fast-paced YouTube stickman scenes with gemini-4-hydrogen
       const directorPrompt = `
-You are an expert YouTube Stickman Video Director (in the style of fast-paced viral stickman explainer channels).
-Given this audio transcript and total audio duration of ${effectiveDuration.toFixed(1)} seconds, break the video into ${targetScenesCount} high-retention scenes (about 2.5 to 4.5 seconds per cut).
+You are an expert YouTube Stickman Video Director (comic-ink explainer style).
+Given this audio transcript and total audio duration of ${effectiveDuration.toFixed(1)} seconds, automatically edit & break the video into ${targetScenesCount} high-retention fast cuts (2.5 to 4 seconds each).
 
-Character Style Notes: ${characterNotes || 'Expressive YouTube stickman narrator'}
-Transcript: "${transcriptText || '(Instrumental / non-verbal audio track — create an engaging visual hook storyboard matching the duration)'}"
+Character Style Notes: ${characterNotes || 'Expressive comic-ink stickman narrator'}
+Transcript: "${transcriptText || '(Instrumental track — generate visual story beats)'}"
 
 Rules:
-- Keep scene narration concise (the exact spoken phrase for that cut, in the same language as the transcript, or engaging Persian/English hook lines if transcript is empty).
-- headline: short punchy 2-5 word kinetic title for on-screen motion graphics.
-- highlightWord: 1 word from headline to highlight with an accent badge.
-- Vary pose, emotion, camera (zoom-in, zoom-out, dolly-punch, pan-left, pan-right, shake), transition (whip-left, zoom-burst, flash-cut, slide-up, ink-wipe), and motionGraphic so edits feel fast and dynamic.
-- Ensure startTime and endTime cover 0 to ${effectiveDuration.toFixed(1)} seconds continuously without gaps.
+- First scene should be sceneRole: "hook", middle beats include "mini-hook" & "story", final scene "cta-outro".
+- headline: punchy 2-5 word kinetic text; highlightWord: 1 accent word; thoughtBubble: '؟', '!', '⚡', '★', or ''.
+- Vary zoom-in, zoom-out, dolly-punch, whip-left, zoom-burst, flash-cut, and motionGraphic dynamically across cuts.
+- Ensure startTime and endTime cover 0 to ${effectiveDuration.toFixed(1)} seconds continuously.
 `;
 
       const sceneResponse = await ai.models.generateContent({
@@ -115,83 +325,7 @@ Rules:
               transcript: { type: Type.STRING },
               scenes: {
                 type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    startTime: { type: Type.NUMBER },
-                    endTime: { type: Type.NUMBER },
-                    narration: { type: Type.STRING },
-                    headline: { type: Type.STRING },
-                    highlightWord: { type: Type.STRING },
-                    pose: {
-                      type: Type.STRING,
-                      enum: [
-                        'presenting',
-                        'pointing-up',
-                        'thinking',
-                        'celebrating',
-                        'shocked',
-                        'typing',
-                        'walking',
-                        'idea',
-                        'facepalm',
-                        'chart-up',
-                      ],
-                    },
-                    emotion: {
-                      type: Type.STRING,
-                      enum: ['happy', 'curious', 'excited', 'serious', 'shocked', 'cool'],
-                    },
-                    camera: {
-                      type: Type.STRING,
-                      enum: ['zoom-in', 'zoom-out', 'pan-left', 'pan-right', 'dolly-punch', 'shake', 'static'],
-                    },
-                    transition: {
-                      type: Type.STRING,
-                      enum: ['whip-left', 'zoom-burst', 'flash-cut', 'slide-up', 'ink-wipe', 'cut'],
-                    },
-                    motionGraphic: {
-                      type: Type.STRING,
-                      enum: [
-                        'kinetic-callout',
-                        'chart-rise',
-                        'spotlight-ring',
-                        'arrow-flow',
-                        'split-compare',
-                        'lightning-pop',
-                      ],
-                    },
-                    propKeyword: {
-                      type: Type.STRING,
-                      enum: [
-                        'rocket',
-                        'money',
-                        'brain',
-                        'laptop',
-                        'clock',
-                        'trophy',
-                        'warning',
-                        'youtube',
-                        'lightbulb',
-                        'chart',
-                        'none',
-                      ],
-                    },
-                  },
-                  required: [
-                    'startTime',
-                    'endTime',
-                    'narration',
-                    'headline',
-                    'highlightWord',
-                    'pose',
-                    'emotion',
-                    'camera',
-                    'transition',
-                    'motionGraphic',
-                    'propKeyword',
-                  ],
-                },
+                items: SCENE_SCHEMA,
               },
             },
             required: ['transcript', 'scenes'],
@@ -210,31 +344,33 @@ Rules:
     }
   });
 
-  // 2. Concurrent per-scene vector SVG illustration & motion refinement
+  // 3. Concurrent per-scene comic-ink vector SVG illustration generation
   app.post('/api/generate-scene-visual', async (req, res) => {
     try {
       const {
         narration = '',
         headline = '',
         propKeyword = 'lightbulb',
-        outfitColor = '#F97316',
+        outfitColor = '#DC2626',
         accentColor = '#38BDF8',
         characterNotes = '',
+        styleMode = 'comic-classic',
       } = req.body ?? {};
 
       const ai = getGeminiClient();
 
       const prompt = `
-Create a clean, bold, flat-vector YouTube stickman explainer prop/diagram SVG illustration for this scene.
+Create a bold, hand-inked comic-book style SVG prop/scene illustration (matching expressive stickman comic art with thick black ink strokes and cross-hatching) for this scene.
+Style Mode: "${styleMode}"
 Scene Headline: "${headline}"
 Narration: "${narration}"
-Suggested Prop Theme: "${propKeyword}"
-Color Palette: primary accent "${outfitColor}", secondary "${accentColor}", crisp white "#F8FAFC" and slate "#1E293B".
-Character Style Context: "${characterNotes}"
+Prop Theme: "${propKeyword}"
+Palette: primary "${outfitColor}", accent "${accentColor}", crisp ink "#111827", highlight "#F8FAFC".
+Context: "${characterNotes}"
 
 Requirements for svgMarkup:
-- Must be a valid standalone <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">...</svg>
-- Bold 4px strokes, clean geometric shapes, dynamic explainer style (like charts, gadgets, icons, arrows, symbols).
+- Standalone <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">...</svg>
+- Thick 4-6px ink outlines, comic cross-hatch shading lines, dynamic explainer visual metaphor.
 - NO <script>, NO <foreignObject>, NO external URLs, NO <text> longer than 4 chars.
 `;
 

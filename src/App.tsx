@@ -25,6 +25,7 @@ export default function App() {
   const [language, setLanguage] = useState<Language>('fa');
   const [activeStage, setActiveStage] = useState<StudioStage>('setup');
 
+  const [topic, setTopic] = useState<string>('');
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
   const [audioMimeType, setAudioMimeType] = useState<string>('audio/wav');
@@ -32,10 +33,10 @@ export default function App() {
   const [audioDuration, setAudioDuration] = useState<number>(13);
 
   const [transcript, setTranscript] = useState<string>(
-    'چرا ۹۰ درصد کانال‌های یوتیوب توی ۶ ماه اول متوقف میشن؟ مشکل از الگوریتم نیست؛ مشکل ریتم تدوین و هوک ۳ ثانیه اوله!'
+    'چرا ۹۰ درصد کانال‌های یوتیوب قبل از ۱۰۰۰ سابسکرایب متوقف میشن؟ صبر کن! راز اصلی توی ۳ ثانیه اول قایم شده!'
   );
   const [character, setCharacter] = useState<CharacterConfig>(DEFAULT_CHARACTER);
-  const [theme, setTheme] = useState<CanvasTheme>('dark-studio');
+  const [theme, setTheme] = useState<CanvasTheme>('sketchbook');
   const [scenes, setScenes] = useState<SceneItem[]>(() =>
     createSampleYouTubeScenes('fa')
   );
@@ -58,7 +59,6 @@ export default function App() {
     document.documentElement.dir = language === 'fa' ? 'rtl' : 'ltr';
   }, [language]);
 
-  // Support ?autostart=1 jumping straight to production preview with sample audio
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('autostart') === '1') {
@@ -72,25 +72,224 @@ export default function App() {
     }
   }, []);
 
-  const handleLoadSample = useCallback(
-    (sampleLang: 'fa' | 'en') => {
-      const sampleAudio = createSampleStudioAudio(13);
-      setAudioUrl(sampleAudio.url);
-      setAudioBase64(sampleAudio.base64);
-      setAudioMimeType(sampleAudio.mimeType);
-      setAudioFileName(
-        sampleLang === 'fa' ? 'sample-youtube-hook-fa.wav' : 'sample-youtube-hook-en.wav'
-      );
-      setAudioDuration(sampleAudio.duration);
-      const sampleScenes = createSampleYouTubeScenes(sampleLang);
-      setScenes(sampleScenes);
-      setTranscript(sampleScenes.map((s) => s.narration).join(' '));
-      setAnalyzeError(null);
-      setBuildError(null);
+  const handleLoadSample = useCallback((sampleLang: 'fa' | 'en') => {
+    const sampleAudio = createSampleStudioAudio(13);
+    setAudioUrl(sampleAudio.url);
+    setAudioBase64(sampleAudio.base64);
+    setAudioMimeType(sampleAudio.mimeType);
+    setAudioFileName(
+      sampleLang === 'fa' ? 'sample-youtube-hook-fa.wav' : 'sample-youtube-hook-en.wav'
+    );
+    setAudioDuration(sampleAudio.duration);
+    const sampleScenes = createSampleYouTubeScenes(sampleLang);
+    setScenes(sampleScenes);
+    setTranscript(sampleScenes.map((s) => s.narration).join(' '));
+    setAnalyzeError(null);
+    setBuildError(null);
+  }, []);
+
+  const buildSingleSceneVisual = useCallback(
+    async (scene: SceneItem) => {
+      const updateThis = (patch: Partial<SceneItem>) => {
+        setScenes((prev) =>
+          prev.map((item) => (item.id === scene.id ? { ...item, ...patch } : item))
+        );
+      };
+
+      updateThis({
+        status: 'designing',
+        progress: 30,
+        buildStepLabel: language === 'fa' ? 'کارگردانی صحنه' : 'Designing',
+      });
+
+      try {
+        updateThis({
+          status: 'drawing',
+          progress: 65,
+          buildStepLabel: language === 'fa' ? 'ترسیم کمیک' : 'Drawing Art',
+        });
+
+        const resp = await fetch('/api/generate-scene-visual', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            narration: scene.narration,
+            headline: scene.headline,
+            propKeyword: scene.propKeyword,
+            outfitColor: character.outfitColor,
+            accentColor: character.accentColor,
+            characterNotes: character.customNotes,
+            styleMode: character.styleMode,
+          }),
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) {
+          throw new Error(data.error || 'Scene art generation failed.');
+        }
+
+        updateThis({
+          status: 'animating',
+          progress: 88,
+          customSvgArtwork: data.svgMarkup || scene.customSvgArtwork,
+          buildStepLabel: language === 'fa' ? 'موشن‌گرافیک' : 'Animating',
+        });
+
+        await new Promise((r) => setTimeout(r, 180));
+
+        updateThis({
+          status: 'ready',
+          progress: 100,
+          buildStepLabel: language === 'fa' ? 'آماده' : 'Ready',
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Error';
+        setBuildError(msg);
+        updateThis({
+          status: 'error',
+          progress: 100,
+          buildStepLabel: language === 'fa' ? 'خطا' : 'Error',
+        });
+      }
     },
-    []
+    [character, language]
   );
 
+  // Concurrent production queue: builds up to 3 scenes simultaneously in parallel
+  const runConcurrentBuildForScenes = useCallback(
+    async (targetScenes: SceneItem[]) => {
+      if (targetScenes.length === 0) return;
+      setActiveStage('production');
+      setIsBuildingAll(true);
+      setBuildError(null);
+
+      setScenes(
+        targetScenes.map((s) => ({
+          ...s,
+          status: 'queued',
+          progress: 10,
+          buildStepLabel: language === 'fa' ? 'در صف ساخت' : 'Queued',
+        }))
+      );
+
+      const concurrency = 3;
+      let cursor = 0;
+
+      const worker = async () => {
+        while (cursor < targetScenes.length) {
+          const currentIdx = cursor++;
+          await buildSingleSceneVisual(targetScenes[currentIdx]);
+        }
+      };
+
+      await Promise.all(
+        Array.from({ length: Math.min(concurrency, targetScenes.length) }, () =>
+          worker()
+        )
+      );
+      setIsBuildingAll(false);
+    },
+    [language, buildSingleSceneVisual]
+  );
+
+  const mapRawScenes = useCallback(
+    (rawScenes: Partial<SceneItem>[], targetDuration?: number): SceneItem[] => {
+      const mapped: SceneItem[] = rawScenes.map((raw, idx) => ({
+        id: `scene-${Date.now()}-${idx}`,
+        index: idx,
+        startTime: Number(raw.startTime ?? idx * 3),
+        endTime: Number(raw.endTime ?? (idx + 1) * 3),
+        narration: raw.narration || '',
+        headline: raw.headline || `Scene ${idx + 1}`,
+        highlightWord: raw.highlightWord || '',
+        thoughtBubble: raw.thoughtBubble || '',
+        sceneRole: raw.sceneRole || 'story',
+        pose: raw.pose || 'presenting',
+        emotion: raw.emotion || 'happy',
+        camera: raw.camera || 'zoom-in',
+        transition: raw.transition || 'whip-left',
+        motionGraphic: raw.motionGraphic || 'kinetic-callout',
+        propKeyword: raw.propKeyword || 'lightbulb',
+        status: 'queued',
+        progress: 15,
+        buildStepLabel: language === 'fa' ? 'در صف ساخت' : 'Queued',
+      }));
+      return normalizeSceneTimings(mapped, targetDuration);
+    },
+    [language]
+  );
+
+  // Topic-only Auto-Pilot: writes script (Hook + Mini-Hooks + CTA), generates TTS voiceover, auto-edits & builds scenes concurrently!
+  const handleGenerateFromTopic = async () => {
+    if (!topic.trim()) {
+      setAnalyzeError(t.noTopicWarning);
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAnalyzeError(null);
+    setBuildError(null);
+
+    try {
+      const resp = await fetch('/api/generate-from-topic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: topic.trim(),
+          languageHint: language,
+          characterNotes: `${character.outfit} (${character.outfitColor}), ${character.headwear}, ${character.customNotes}`,
+          styleMode: character.styleMode,
+        }),
+      });
+
+      const data = await resp.json();
+      if (!resp.ok) {
+        throw new Error(data.error || 'Topic generation failed.');
+      }
+
+      if (typeof data.transcript === 'string' && data.transcript.trim()) {
+        setTranscript(data.transcript.trim());
+      }
+
+      let targetDuration = 22;
+      if (data.audioBase64) {
+        const binary = atob(data.audioBase64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        const wavBlob = new Blob([bytes], { type: 'audio/wav' });
+        const wavUrl = URL.createObjectURL(wavBlob);
+        setAudioUrl(wavUrl);
+        setAudioBase64(data.audioBase64);
+        setAudioMimeType('audio/wav');
+        setAudioFileName('ai-narrator-voiceover.wav');
+        targetDuration = Number(data.audioDuration) || 22;
+        setAudioDuration(targetDuration);
+      } else if (data.ttsWarning) {
+        setBuildError(data.ttsWarning);
+      }
+
+      if (Array.isArray(data.scenes) && data.scenes.length > 0) {
+        const nextScenes = mapRawScenes(
+          data.scenes,
+          data.audioBase64 ? targetDuration : undefined
+        );
+        setScenes(nextScenes);
+        setIsAnalyzing(false);
+        await runConcurrentBuildForScenes(nextScenes);
+        return;
+      }
+    } catch (err) {
+      setAnalyzeError(
+        err instanceof Error ? err.message : 'Failed to generate video from topic.'
+      );
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // Audio-to-Video Auto-Pilot: transcribes audio, auto-edits cuts, and builds concurrently without manual steps!
   const handleAnalyzeAudio = async () => {
     if (!audioBase64) {
       setAnalyzeError(t.noAudioWarning);
@@ -98,6 +297,7 @@ export default function App() {
     }
     setIsAnalyzing(true);
     setAnalyzeError(null);
+    setBuildError(null);
 
     try {
       const resp = await fetch('/api/analyze-audio', {
@@ -122,28 +322,11 @@ export default function App() {
       }
 
       if (Array.isArray(data.scenes) && data.scenes.length > 0) {
-        const mapped: SceneItem[] = data.scenes.map(
-          (raw: Partial<SceneItem>, idx: number) => ({
-            id: `scene-${Date.now()}-${idx}`,
-            index: idx,
-            startTime: Number(raw.startTime ?? idx * 3),
-            endTime: Number(raw.endTime ?? (idx + 1) * 3),
-            narration: raw.narration || '',
-            headline: raw.headline || `Scene ${idx + 1}`,
-            highlightWord: raw.highlightWord || '',
-            pose: raw.pose || 'presenting',
-            emotion: raw.emotion || 'happy',
-            camera: raw.camera || 'zoom-in',
-            transition: raw.transition || 'whip-left',
-            motionGraphic: raw.motionGraphic || 'kinetic-callout',
-            propKeyword: raw.propKeyword || 'lightbulb',
-            status: 'queued',
-            progress: 15,
-            buildStepLabel: language === 'fa' ? 'در صف ساخت' : 'Queued',
-          })
-        );
-        setScenes(normalizeSceneTimings(mapped, audioDuration));
-        setActiveStage('storyboard');
+        const nextScenes = mapRawScenes(data.scenes, audioDuration);
+        setScenes(nextScenes);
+        setIsAnalyzing(false);
+        await runConcurrentBuildForScenes(nextScenes);
+        return;
       }
     } catch (err) {
       setAnalyzeError(err instanceof Error ? err.message : 'Audio analysis failed.');
@@ -151,105 +334,6 @@ export default function App() {
       setIsAnalyzing(false);
     }
   };
-
-  const buildSingleSceneVisual = useCallback(
-    async (scene: SceneItem) => {
-      const updateThis = (patch: Partial<SceneItem>) => {
-        setScenes((prev) =>
-          prev.map((item) => (item.id === scene.id ? { ...item, ...patch } : item))
-        );
-      };
-
-      updateThis({
-        status: 'designing',
-        progress: 30,
-        buildStepLabel: language === 'fa' ? 'کارگردانی صحنه' : 'Designing',
-      });
-
-      try {
-        updateThis({
-          status: 'drawing',
-          progress: 65,
-          buildStepLabel: language === 'fa' ? 'ترسیم تصویر' : 'Drawing Art',
-        });
-
-        const resp = await fetch('/api/generate-scene-visual', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            narration: scene.narration,
-            headline: scene.headline,
-            propKeyword: scene.propKeyword,
-            outfitColor: character.outfitColor,
-            accentColor: character.accentColor,
-            characterNotes: character.customNotes,
-          }),
-        });
-
-        const data = await resp.json();
-        if (!resp.ok) {
-          throw new Error(data.error || 'Scene art generation failed.');
-        }
-
-        updateThis({
-          status: 'animating',
-          progress: 88,
-          customSvgArtwork: data.svgMarkup || scene.customSvgArtwork,
-          buildStepLabel: language === 'fa' ? 'اعمال موشن‌گرافیک' : 'Animating',
-        });
-
-        await new Promise((r) => setTimeout(r, 180));
-
-        updateThis({
-          status: 'ready',
-          progress: 100,
-          buildStepLabel: language === 'fa' ? 'آماده' : 'Ready',
-        });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Error';
-        setBuildError(msg);
-        updateThis({
-          status: 'error',
-          progress: 100,
-          buildStepLabel: language === 'fa' ? 'خطا' : 'Error',
-        });
-      }
-    },
-    [character, language]
-  );
-
-  // Concurrent production queue: builds up to 3 scenes simultaneously in parallel
-  const handleBuildAllConcurrent = useCallback(async () => {
-    if (scenes.length === 0) return;
-    setActiveStage('production');
-    setIsBuildingAll(true);
-    setBuildError(null);
-
-    const snapshot = [...scenes];
-    setScenes((prev) =>
-      prev.map((s) => ({
-        ...s,
-        status: 'queued',
-        progress: 10,
-        buildStepLabel: language === 'fa' ? 'در صف ساخت' : 'Queued',
-      }))
-    );
-
-    const concurrency = 3;
-    let cursor = 0;
-
-    const worker = async () => {
-      while (cursor < snapshot.length) {
-        const currentIdx = cursor++;
-        await buildSingleSceneVisual(snapshot[currentIdx]);
-      }
-    };
-
-    await Promise.all(
-      Array.from({ length: Math.min(concurrency, snapshot.length) }, () => worker())
-    );
-    setIsBuildingAll(false);
-  }, [scenes, language, buildSingleSceneVisual]);
 
   const handleUpdateScene = (sceneId: string, patch: Partial<SceneItem>) => {
     setScenes((prev) =>
@@ -281,6 +365,8 @@ export default function App() {
             : 'The next key insight that hooks your viewer!',
         headline: language === 'fa' ? 'نکته کلیدی بعدی' : 'Next Big Insight',
         highlightWord: language === 'fa' ? 'کلیدی' : 'Insight',
+        thoughtBubble: '!',
+        sceneRole: 'mini-hook',
         pose: 'pointing-up',
         emotion: 'excited',
         camera: 'zoom-in',
@@ -347,7 +433,6 @@ export default function App() {
       setExportedVideoUrl(result.url);
       setExportedFileName(result.fileName);
 
-      // Automatically trigger browser download
       const anchor = document.createElement('a');
       anchor.href = result.url;
       anchor.download = result.fileName;
@@ -366,8 +451,10 @@ export default function App() {
   const handleHeaderPrimary = () => {
     if (activeStage === 'production') {
       void handleExportVideo();
+    } else if (activeStage === 'setup' && topic.trim() && !audioBase64) {
+      void handleGenerateFromTopic();
     } else {
-      void handleBuildAllConcurrent();
+      void runConcurrentBuildForScenes(scenes);
     }
   };
 
@@ -382,7 +469,6 @@ export default function App() {
       />
 
       <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 py-8 flex flex-col gap-6">
-        {/* Studio Intro Strip & Language Switcher */}
         <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-6">
           <div className="max-w-3xl">
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
@@ -412,17 +498,19 @@ export default function App() {
           </div>
         )}
 
-        {/* Stage 1: Audio Upload & Stickman Character Outfit Studio */}
         {activeStage === 'setup' && (
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
             <div className="xl:col-span-5">
               <AudioInputPanel
                 language={language}
+                topic={topic}
                 audioUrl={audioUrl}
                 audioFileName={audioFileName}
                 audioDuration={audioDuration}
                 isAnalyzing={isAnalyzing}
                 analyzeError={analyzeError}
+                onChangeTopic={setTopic}
+                onGenerateFromTopic={() => void handleGenerateFromTopic()}
                 onAudioLoaded={({ url, base64, mimeType, fileName, duration }) => {
                   setAudioUrl(url);
                   setAudioBase64(base64);
@@ -450,7 +538,6 @@ export default function App() {
           </div>
         )}
 
-        {/* Stage 2: Editable Scene-by-Scene Storyboard */}
         {activeStage === 'storyboard' && (
           <StoryboardEditor
             language={language}
@@ -470,11 +557,10 @@ export default function App() {
               const found = scenes.find((s) => s.id === sceneId);
               if (found) void buildSingleSceneVisual(found);
             }}
-            onBuildAllConcurrent={() => void handleBuildAllConcurrent()}
+            onBuildAllConcurrent={() => void runConcurrentBuildForScenes(scenes)}
           />
         )}
 
-        {/* Stage 3: Live Concurrent Scene Build + 16:9 Cinema Player + Downloadable Export */}
         {activeStage === 'production' && (
           <LiveProductionStage
             language={language}
@@ -488,7 +574,7 @@ export default function App() {
             exportedVideoUrl={exportedVideoUrl}
             exportedFileName={exportedFileName}
             exportError={exportError}
-            onStartConcurrentBuild={() => void handleBuildAllConcurrent()}
+            onStartConcurrentBuild={() => void runConcurrentBuildForScenes(scenes)}
             onExportVideo={() => void handleExportVideo()}
             onJumpToEdit={() => setActiveStage('storyboard')}
           />

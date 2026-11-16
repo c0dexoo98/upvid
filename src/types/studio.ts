@@ -4,6 +4,12 @@ export type StudioStage = 'setup' | 'storyboard' | 'production';
 
 export type CanvasTheme = 'dark-studio' | 'chalkboard' | 'sketchbook' | 'blueprint';
 
+export type StickmanStyleMode =
+  | 'comic-classic'
+  | 'horror-mystery'
+  | 'cyber-tech'
+  | 'money-business';
+
 export type OutfitId =
   | 'hoodie'
   | 'suit'
@@ -80,6 +86,8 @@ export type PropKeyword =
   | 'chart'
   | 'none';
 
+export type SceneRole = 'hook' | 'story' | 'mini-hook' | 'climax' | 'cta-outro';
+
 export type SceneBuildStatus =
   | 'queued'
   | 'designing'
@@ -90,6 +98,7 @@ export type SceneBuildStatus =
 
 export interface CharacterConfig {
   name: string;
+  styleMode: StickmanStyleMode;
   outfit: OutfitId;
   outfitColor: string;
   accentColor: string;
@@ -108,6 +117,8 @@ export interface SceneItem {
   narration: string;
   headline: string;
   highlightWord: string;
+  thoughtBubble?: string;
+  sceneRole?: SceneRole;
   pose: StickmanPose;
   emotion: StickmanEmotion;
   camera: CameraMotion;
