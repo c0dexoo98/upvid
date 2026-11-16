@@ -1,0 +1,6 @@
+{
+  "name": "UpVid — Stickman YouTube Video Studio",
+  "description": "AI-powered stickman YouTube video creator with audio transcription, customizable character outfits, live concurrent scene generation, kinetic typography, fast transitions, zoom motion graphics, and downloadable video export.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
